@@ -6,6 +6,8 @@
 #include <atomic>
 #include <vector>
 #include <cstdint>
+#include <SDL2/SDL.h>
+#include <Processing.NDI.Lib.h>
 #include "config.h"
 #include "ndi_source.h"
 #include "display.h"
@@ -38,7 +40,7 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
     while (!g_should_close && !display_should_close(display)) {
         pump_events();
 
-        switch (NDIlib_recv_capture_v3(recv, &video_frame, &audio_frame, nullptr, 5000)) {
+        switch (NDIlib_recv_capture_v2(recv, &video_frame, &audio_frame, nullptr, 5000)) {
             case NDIlib_frame_type_video:
                 consecutive_timeouts = 0;
                 {

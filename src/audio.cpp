@@ -1,5 +1,6 @@
 #include <SDL.h>
 #include <samplerate.h>
+#include <Processing.NDI.Lib.h>
 #include <Processing.NDI.utilities.h>
 #include <iostream>
 #include <vector>

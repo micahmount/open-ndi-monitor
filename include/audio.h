@@ -1,11 +1,14 @@
 #pragma once
 
 #include "audio_ring_buffer.h"
+#include <Processing.NDI.Lib.h>
+#include <Processing.NDI.utilities.h>
 
 // Fixed output sample rate (resample all sources to this)
 static constexpr int AUDIO_OUTPUT_RATE = 48000;
 
 struct AudioContext;
+struct NDIlib_audio_frame_v2_t;
 
 // Initialize SDL audio subsystem and open output device.
 // Returns nullptr on failure.
@@ -22,6 +25,9 @@ AudioRingBuffer* audio_buffer(AudioContext* ctx);
 
 // Reconfigure for a new source sample rate. Reinitializes the resampler.
 void audio_reconfigure(AudioContext* ctx, int source_rate, int channels);
+
+// Push an NDI audio frame into the audio system.
+void audio_push_frame(AudioContext* ctx, const NDIlib_audio_frame_v2_t* frame);
 
 // Tear down and free the audio context.
 void audio_close(AudioContext* ctx);

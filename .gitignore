@@ -4,5 +4,10 @@ memory-bank/
 .clineignore
 .clinerules
 
-# The resources folder should be ignore; we don't want to commit the NDI SDK
+# Resources and build artifacts can be excluded.
 resources/
+ndi-sdk/
+out/
+
+# Testing results can also be ignored, tests themselves are thin the tests/ (lowercase) directory.
+Testing/
