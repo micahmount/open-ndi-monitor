@@ -73,36 +73,42 @@ else()
     message(STATUS "Skipping main app build - missing dependencies")
 endif()
 
-# Tests
+# Tests - install separately so they don't go in runtime package
 add_executable(test_config tests/test_config.cpp src/config.cpp)
 target_include_directories(test_config PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_config PRIVATE GTest::gtest_main)
+install(TARGETS test_config DESTINATION bin COMPONENT Test)
 
 add_executable(test_color_convert tests/test_color_convert.cpp src/color_convert.cpp)
 target_include_directories(test_color_convert PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_color_convert PRIVATE GTest::gtest_main)
+install(TARGETS test_color_convert DESTINATION bin COMPONENT Test)
 
 add_executable(test_audio_ring_buffer tests/test_audio_ring_buffer.cpp src/audio_ring_buffer.cpp)
 target_include_directories(test_audio_ring_buffer PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_audio_ring_buffer PRIVATE GTest::gtest_main)
+install(TARGETS test_audio_ring_buffer DESTINATION bin COMPONENT Test)
 
 include(GoogleTest)
 gtest_discover_tests(test_config test_color_convert test_audio_ring_buffer)
 
-# Install - only if main app was built
+# Install - only if main app was built (not tests)
 if(TARGET open-ndi-monitor)
-    install(TARGETS open-ndi-monitor DESTINATION bin)
-    install(DIRECTORY "${NDI_SDK_PATH}/lib/x86_64-linux-gnu/" DESTINATION lib/open-ndi-monitor FILES_MATCHING PATTERN "libndi.so*")
-    install(FILES "${CMAKE_SOURCE_DIR}/open-ndi-monitor.service" DESTINATION lib/systemd/system)
-endif()
+    install(TARGETS open-ndi-monitor DESTINATION bin COMPONENT Runtime)
+    install(DIRECTORY "${NDI_SDK_PATH}/lib/x86_64-linux-gnu/" DESTINATION lib/open-ndi-monitor COMPONENT Runtime FILES_MATCHING PATTERN "libndi.so*")
+    install(FILES "${CMAKE_SOURCE_DIR}/open-ndi-monitor.service" DESTINATION lib/systemd/system COMPONENT Runtime)
 
-# CPack Debian
-set(CPACK_PACKAGE_NAME "open-ndi-monitor")
-set(CPACK_PACKAGE_VERSION "0.1.0")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NDI video monitor")
-set(CPACK_PACKAGE_MAINTAINER "Micah")
-set(CPACK_GENERATOR "DEB")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0, libsamplerate0")
-set(CPACK_DEBIAN_PACKAGE_REPLACES "ndi-sdk")
-set(CPACK_DEBIAN_PACKAGE_SECTION "video")
-include(CPack)
+    # CPack Debian
+    set(CPACK_PACKAGE_NAME "open-ndi-monitor")
+    set(CPACK_PACKAGE_VERSION "0.1.0")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NDI video monitor")
+    set(CPACK_PACKAGE_MAINTAINER "micah")
+    set(CPACK_PACKAGE_CONTACT "micah")
+    set(CPACK_GENERATOR "DEB")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsamplerate0-0")
+    set(CPACK_DEBIAN_PACKAGE_REPLACES "ndi-sdk")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "video")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+    set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+    include(CPack)
+endif()

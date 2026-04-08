@@ -4,10 +4,14 @@ memory-bank/
 .clineignore
 .clinerules
 
-# Resources and build artifacts can be excluded.
+# Build artifacts and external dependencies
 resources/
 ndi-sdk/
 out/
-
-# Testing results can also be ignored, tests themselves are thin the tests/ (lowercase) directory.
 Testing/
+debian/
+
+# Debian packages are built in parent dir
+*.deb
+*.dsc
+*.changes
