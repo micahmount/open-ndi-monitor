@@ -1,0 +1,21 @@
+Source: open-ndi-monitor
+Section: video
+Priority: optional
+Maintainer: micah <micah>
+Build-Depends: cmake, pkg-config, libsdl2-dev, libsamplerate0-dev, debhelper-compat (= 13)
+Standards-Version: 4.6.0
+Homepage: https://github.com/anomalyco/open-ndi-monitor
+
+Package: open-ndi-monitor
+Architecture: amd64
+Depends: ${misc:Depends}, libsdl2-2.0-0, libsamplerate0-0
+Description: Fullscreen NDI video receiver
+ Fullscreen NDI video monitor with automatic source discovery,
+ audio output with resampling, and reconnection logic.
+ .
+ Features:
+  * Automatic NDI source discovery on local network
+  * SDL2-based fullscreen video display
+  * Audio output via SDL2 with libsamplerate resampling to 48kHz
+  * Automatic reconnection with exponential backoff
+  * INI-style configuration file support

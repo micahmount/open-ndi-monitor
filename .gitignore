@@ -9,7 +9,6 @@ resources/
 ndi-sdk/
 out/
 Testing/
-debian/
 
 # Debian packages are built in parent dir
 *.deb
