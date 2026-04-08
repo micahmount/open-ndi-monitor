@@ -8,7 +8,7 @@ Homepage: https://github.com/anomalyco/open-ndi-monitor
 
 Package: open-ndi-monitor
 Architecture: amd64
-Depends: ${misc:Depends}, libsdl2-2.0-0, libsamplerate0-0
+Depends: ${misc:Depends}, libsdl2-2.0-0, libsamplerate0
 Description: Fullscreen NDI video receiver
  Fullscreen NDI video monitor with automatic source discovery,
  audio output with resampling, and reconnection logic.

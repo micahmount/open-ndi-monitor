@@ -69,6 +69,12 @@ if(SDL2_FOUND AND SAMPLERATE_FOUND)
         ${SDL2_LIBRARIES}
         ${SAMPLERATE_LIBRARIES}
     )
+
+    # Set RPATH so the binary can find libndi.so in /usr/lib/open-ndi-monitor
+    set_target_properties(open-ndi-monitor PROPERTIES
+        BUILD_RPATH "$ORIGIN/../lib/open-ndi-monitor"
+        INSTALL_RPATH "/usr/lib/open-ndi-monitor"
+    )
 else()
     message(STATUS "Skipping main app build - missing dependencies")
 endif()
@@ -95,7 +101,8 @@ gtest_discover_tests(test_config test_color_convert test_audio_ring_buffer)
 # Install - only if main app was built (not tests)
 if(TARGET open-ndi-monitor)
     install(TARGETS open-ndi-monitor DESTINATION bin COMPONENT Runtime)
-    install(DIRECTORY "${NDI_SDK_PATH}/lib/x86_64-linux-gnu/" DESTINATION lib/open-ndi-monitor COMPONENT Runtime FILES_MATCHING PATTERN "libndi.so*")
+    # Install NDI library to standard system path for dynamic linker
+    install(DIRECTORY "${NDI_SDK_PATH}/lib/x86_64-linux-gnu/" DESTINATION lib/x86_64-linux-gnu COMPONENT Runtime FILES_MATCHING PATTERN "libndi.so*")
     install(FILES "${CMAKE_SOURCE_DIR}/open-ndi-monitor.service" DESTINATION lib/systemd/system COMPONENT Runtime)
 
     # CPack Debian
@@ -105,7 +112,7 @@ if(TARGET open-ndi-monitor)
     set(CPACK_PACKAGE_MAINTAINER "micah")
     set(CPACK_PACKAGE_CONTACT "micah")
     set(CPACK_GENERATOR "DEB")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsamplerate0-0")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsamplerate0")
     set(CPACK_DEBIAN_PACKAGE_REPLACES "ndi-sdk")
     set(CPACK_DEBIAN_PACKAGE_SECTION "video")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
