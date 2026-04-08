@@ -1,0 +1,8 @@
+# LLM tooling should be ignored
+AGENTS.md
+memory-bank/
+.clineignore
+.clinerules
+
+# The resources folder should be ignore; we don't want to commit the NDI SDK
+resources/
