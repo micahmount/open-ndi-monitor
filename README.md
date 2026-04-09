@@ -6,11 +6,12 @@ A lightweight, performant Linux application that displays NDI video sources full
 
 - **Fullscreen NDI display** — Renders any NDI source to a borderless fullscreen window
 - **Audio output** — Plays NDI audio with automatic sample rate conversion to 48kHz
+- **HDMI audio support** — Auto-detects HDMI audio devices, or specify manually
 - **Multi-monitor support** — Configure which display to use via config file
 - **Auto-reconnection** — Automatically reconnects when the source drops (exponential backoff)
 - **Status indicator** — Visual feedback showing connection state (green/yellow/red)
 - **Simple configuration** — INI-style config file, no complex setup
-- **Versioning** — Version derived from git tags (e.g., v0.1.3)
+- **Systemd service** — Runs as a system service with auto-restart
 
 ## Requirements
 
@@ -37,8 +38,14 @@ The binary will be at `build/bin/open-ndi-monitor`.
 # Run (will prompt for source selection)
 ./build/bin/open-ndi-monitor
 
-# Or with a config file
+# With a config file
 ./build/bin/open-ndi-monitor --config /path/to/config.conf
+
+# List available audio devices
+./build/bin/open-ndi-monitor --list-audio-devices
+
+# Specify audio device manually
+./build/bin/open-ndi-monitor --audio-device hw:0,7
 ```
 
 ### Config File
@@ -54,7 +61,27 @@ fullscreen=true
 
 # Display index (0 = primary)
 display_index=0
+
+# Audio device (empty = auto-detect HDMI)
+audio_device=
 ```
+
+### Systemd Service
+
+Install and run as a service:
+
+```bash
+# Install the service
+sudo cp open-ndi-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable open-ndi-monitor.service
+sudo systemctl start open-ndi-monitor.service
+```
+
+The service automatically:
+- Detects HDMI audio device
+- Runs as the logged-in user (not root)
+- Restarts on failure
 
 ### Controls
 
@@ -68,7 +95,7 @@ src/main.cpp          — Entry point, connection management, reconnection loop
 src/ndi_source.cpp    — NDI source discovery and selection
 src/display.cpp       — SDL2 fullscreen window and rendering
 src/color_convert.cpp — UYVY → BGR24 color conversion
-src/audio.cpp         — SDL2 audio output with libsamplerate
+src/audio.cpp         — SDL2 audio output with libsamplerate, HDMI auto-detection
 src/audio_ring_buffer.cpp — Lock-free SPSC ring buffer for audio
 src/config.cpp        — INI configuration parser
 ```
