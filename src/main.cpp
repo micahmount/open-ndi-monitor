@@ -97,12 +97,20 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
     NDIlib_metadata_frame_t meta_frame;
 
     int consecutive_timeouts = 0;
-    const int max_timeouts = 3;  // 3 * 5s = 15s before declaring connection lost
     int64_t frame_count = 0;
     int64_t audio_count = 0;
 
+    log("Entering receive loop");
+
+    const int max_timeouts = 3;  // 3 * 5s = 15s before declaring connection lost
+
     while (!g_should_close && !display_should_close(display)) {
         pump_events();
+
+        int connections = NDIlib_recv_get_no_connections(recv);
+        if (consecutive_timeouts == 0 || connections != (consecutive_timeouts > 0 ? 1 : connections)) {
+            log("Connection count: %d", connections);
+        }
 
         // Log connection stats every 10 seconds
         if (frame_count > 0 && frame_count % 200 == 0) {
@@ -208,8 +216,10 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
     recv_desc.source_to_connect_to = ndi_source;
     recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+    recv_desc.allow_video_fields = false;
+    recv_desc.p_ndi_recv_name = "open-ndi-monitor";
 
-    log("Creating receiver: color_format=UYVY_BGRA, bandwidth=highest");
+    log("Creating receiver: color_format=UYVY_BGRA, bandwidth=highest, allow_video_fields=false");
 
     return NDIlib_recv_create_v3(&recv_desc);
 }
