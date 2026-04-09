@@ -1,3 +1,15 @@
+open-ndi-monitor (0.1.15) stable; urgency=low
+
+  * Set allow_video_fields=false to request full frames (not fields)
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
+open-ndi-monitor (0.1.14) stable; urgency=low
+
+  * Fallback to software renderer if accelerated fails
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.13) stable; urgency=low
 
   * Force BGRX color format for better compatibility

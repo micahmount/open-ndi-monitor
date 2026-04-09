@@ -83,6 +83,9 @@ cat ~/.open-ndi-monitor.log
 
 ### Version History (Debug Versions)
 
+- v0.1.15: Set allow_video_fields=false to request full frames
+- v0.1.14: Fallback to software renderer if accelerated fails
+- v0.1.13: Added BGRA/BGRX format support (in `color_convert.cpp`)
 - v0.1.12: Added --enable-audio flag, connection wait
 - v0.1.11: Metadata parsing for FourCC/resolution
 - v0.1.10: I420/NV12 support, fastest color format

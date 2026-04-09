@@ -48,6 +48,11 @@ DisplayContext* create_display(int display_index, const std::string& title) {
 
     ctx->renderer = SDL_CreateRenderer(ctx->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!ctx->renderer) {
+        std::cerr << "SDL_CreateRenderer (accelerated) failed: " << SDL_GetError() << "\n";
+        std::printf("Trying software renderer...\n");
+        ctx->renderer = SDL_CreateRenderer(ctx->window, -1, SDL_RENDERER_SOFTWARE);
+    }
+    if (!ctx->renderer) {
         std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << "\n";
         SDL_DestroyWindow(ctx->window);
         SDL_Quit();
@@ -106,10 +111,15 @@ void update_display(DisplayContext* ctx, const void* pixels, int width, int heig
             const uint8_t* src = static_cast<const uint8_t*>(pixels);
             uint8_t* dst = static_cast<uint8_t*>(tex_pixels);
             int src_pitch = width * 3;
+            std::printf("update_display: src_pitch=%d, tex_pitch=%d\n", src_pitch, tex_pitch);
             for (int y = 0; y < height; y++) {
                 memcpy(dst + y * tex_pitch, src + y * src_pitch, src_pitch);
             }
+            // Debug: check first few pixels after copy
+            std::printf("First pixel BGR: %d,%d,%d\n", dst[0], dst[1], dst[2]);
             SDL_UnlockTexture(ctx->texture);
+        } else {
+            std::cerr << "SDL_LockTexture failed: " << SDL_GetError() << "\n";
         }
 
         SDL_RenderClear(ctx->renderer);

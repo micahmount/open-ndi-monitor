@@ -209,6 +209,14 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
 
                     bool converted = false;
 
+                    log("Video format: FourCC=0x%08X (%s)", 
+                        static_cast<unsigned int>(video_frame.FourCC),
+                        video_frame.FourCC == NDIlib_FourCC_type_BGRA ? "BGRA" :
+                        video_frame.FourCC == NDIlib_FourCC_type_BGRX ? "BGRX" :
+                        video_frame.FourCC == NDIlib_FourCC_type_UYVY ? "UYVY" :
+                        video_frame.FourCC == NDIlib_FourCC_type_I420 ? "I420" :
+                        video_frame.FourCC == NDIlib_FourCC_type_NV12 ? "NV12" : "unknown");
+
                     if (video_frame.FourCC == NDIlib_FourCC_type_BGRA ||
                         video_frame.FourCC == NDIlib_FourCC_type_BGRX) {
                         bgra_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
@@ -239,6 +247,9 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     }
 
                     if (converted) {
+                        // Debug: print first pixel after conversion
+                        printf("BGR buffer first pixel: %d,%d,%d\n", 
+                               bgr_buffer[0], bgr_buffer[1], bgr_buffer[2]);
                         update_display(display, bgr_buffer.data(), w, h);
                         display_draw_text(display, "connected", 20, 20);
                     }
@@ -288,10 +299,10 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
     recv_desc.source_to_connect_to = ndi_source;
     recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
-    recv_desc.allow_video_fields = true;
+    recv_desc.allow_video_fields = false;
     recv_desc.p_ndi_recv_name = "open-ndi-monitor";
 
-    log("Creating receiver: color_format=BGRX_BGRA, bandwidth=highest");
+    log("Creating receiver: color_format=BGRX_BGRA, bandwidth=highest, allow_video_fields=false");
 
     return NDIlib_recv_create_v3(&recv_desc);
 }
