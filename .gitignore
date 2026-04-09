@@ -13,6 +13,10 @@ debian/*.changes
 debian/*.buildinfo
 debian/files
 debian/*.substvars
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/open-ndi-monitor.postrm.debhelper
+debian/open-ndi-monitor/
 
 # Debian packages are built in parent dir
 *.deb

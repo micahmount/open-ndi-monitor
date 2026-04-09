@@ -1,4 +1,4 @@
-open-ndi-monitor (0.1.10) stable; urgency=low
+open-ndi-monitor (0.1.12) stable; urgency=low
 
   * Add window/renderer creation debug logging
   * Add SDL_RaiseWindow to ensure visibility

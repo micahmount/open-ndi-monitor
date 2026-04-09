@@ -1,16 +1,20 @@
 [Unit]
 Description=NDI Video Monitor
 After=network.target
+After=graphical.target
 
 [Service]
 Type=simple
+User=atrium
+Environment=XAUTHORITY=/home/atrium/.Xauthority
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStartPre=/usr/bin/sleep 1
 ExecStart=/usr/bin/open-ndi-monitor
 Restart=on-failure
 RestartSec=5
-Environment=DISPLAY=:0
-Environment=XDG_RUNTIME_DIR=/run/user/1000
 StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical.target
