@@ -134,15 +134,12 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     int h = video_frame.yres;
                     int src_pitch = video_frame.line_stride_in_bytes;
 
-                    log("Video frame #%lld: %dx%d, pitch=%d, FourCC=%u (UYVY=%u, BGRA=%u, BGRX=%u)", 
+                    log("Video frame #%lld: %dx%d, pitch=%d, FourCC=0x%08X", 
                         (long long)frame_count,
                         w, h, src_pitch, 
-                        static_cast<unsigned int>(video_frame.FourCC),
-                        static_cast<unsigned int>(NDIlib_FourCC_type_UYVY),
-                        static_cast<unsigned int>(NDIlib_FourCC_type_BGRA),
-                        static_cast<unsigned int>(NDIlib_FourCC_type_BGRX));
+                        static_cast<unsigned int>(video_frame.FourCC));
 
-                    // Validate frame parameters to prevent crashes
+                    // Validate frame parameters
                     if (w <= 0 || h <= 0 || src_pitch <= 0) {
                         log("ERROR: Invalid video frame: %dx%d pitch=%d", w, h, src_pitch);
                         NDIlib_recv_free_video_v2(recv, &video_frame);
@@ -153,24 +150,42 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                         bgr_buffer.resize(w * h * 3);
                     }
 
-                    // Check for BGRA/BGRX format (most common from NDI sources)
+                    bool converted = false;
+
                     if (video_frame.FourCC == NDIlib_FourCC_type_BGRA ||
                         video_frame.FourCC == NDIlib_FourCC_type_BGRX) {
                         bgra_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
                                       src_pitch,
                                       bgr_buffer.data(), w, h);
+                        converted = true;
                     } else if (video_frame.FourCC == NDIlib_FourCC_type_UYVY) {
                         uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
                                       src_pitch,
                                       bgr_buffer.data(), w, h);
+                        converted = true;
+                    } else if (video_frame.FourCC == NDIlib_FourCC_type_I420) {
+                        const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                        const uint8_t* u = y + h * src_pitch;
+                        const uint8_t* v = u + (h / 2) * (src_pitch / 2);
+                        i420_to_bgr24(y, src_pitch, u, src_pitch / 2, v, src_pitch / 2,
+                                      bgr_buffer.data(), w, h);
+                        converted = true;
+                    } else if (video_frame.FourCC == NDIlib_FourCC_type_NV12) {
+                        const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                        const uint8_t* uv = y + h * src_pitch;
+                        nv12_to_bgr24(y, src_pitch, uv, src_pitch,
+                                      bgr_buffer.data(), w, h);
+                        converted = true;
                     } else {
-                        log("ERROR: Unsupported video format: FourCC=%u", video_frame.FourCC);
-                        NDIlib_recv_free_video_v2(recv, &video_frame);
-                        break;
+                        log("ERROR: Unsupported video format: FourCC=0x%08X", 
+                            static_cast<unsigned int>(video_frame.FourCC));
                     }
 
-                    update_display(display, bgr_buffer.data(), w, h);
-                    display_draw_text(display, "connected", 20, 20);
+                    if (converted) {
+                        update_display(display, bgr_buffer.data(), w, h);
+                        display_draw_text(display, "connected", 20, 20);
+                    }
+
                     NDIlib_recv_free_video_v2(recv, &video_frame);
                 }
                 break;
@@ -214,12 +229,12 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
 
     NDIlib_recv_create_v3_t recv_desc = {0};
     recv_desc.source_to_connect_to = ndi_source;
-    recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
+    recv_desc.color_format = NDIlib_recv_color_format_fastest;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
     recv_desc.allow_video_fields = false;
     recv_desc.p_ndi_recv_name = "open-ndi-monitor";
 
-    log("Creating receiver: color_format=UYVY_BGRA, bandwidth=highest, allow_video_fields=false");
+    log("Creating receiver: color_format=fastest, bandwidth=highest");
 
     return NDIlib_recv_create_v3(&recv_desc);
 }
@@ -354,6 +369,12 @@ int main(int argc, char* argv[]) {
 
             printf("Receiving video (press Escape to quit)...\n");
             display_draw_text(display, "connected", 20, 20);
+
+            // Query connected source name
+            const char* connected_name = nullptr;
+            if (NDIlib_recv_get_source_name(recv, &connected_name, 5000) && connected_name) {
+                log("Connected to source: %s", connected_name);
+            }
 
             // Run receive loop - returns true if connection lost
             bool connection_lost = receive_loop(recv, display, audio, bgr_buffer);

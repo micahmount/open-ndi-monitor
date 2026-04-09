@@ -1,3 +1,11 @@
+open-ndi-monitor (0.1.10) stable; urgency=low
+
+  * Add I420 and NV12 video format support
+  * Use NDIlib_recv_color_format_fastest for better compatibility
+  * Query and log connected source name
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.9) stable; urgency=low
 
   * Add connection count logging to diagnose connectivity issues
