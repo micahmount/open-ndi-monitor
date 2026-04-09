@@ -1,11 +1,14 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <chrono>
 #include <atomic>
 #include <vector>
 #include <cstdint>
+#include <cstdarg>
+#include <ctime>
 #include <unistd.h>
 #include <SDL2/SDL.h>
 #include <Processing.NDI.Lib.h>
@@ -17,6 +20,35 @@
 #include "user_detect.h"
 
 static std::atomic<bool> g_should_close{false};
+
+static std::ofstream g_logfile;
+
+void log(const char* fmt, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    
+    std::string timestamp = []{
+        time_t now = time(nullptr);
+        char buf[64];
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+        return std::string(buf);
+    }();
+    
+    std::string line = "[" + timestamp + "] " + buf + "\n";
+    std::printf("%s", line.c_str());
+    if (g_logfile.is_open()) {
+        g_logfile << line << std::flush;
+    }
+}
+
+void log_close() {
+    if (g_logfile.is_open()) {
+        g_logfile.close();
+    }
+}
 
 void print_dependency_error() {
     std::cerr << "Missing required dependencies. Install with:\n";
@@ -65,28 +97,39 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
 
     int consecutive_timeouts = 0;
     const int max_timeouts = 3;  // 3 * 5s = 15s before declaring connection lost
+    int64_t frame_count = 0;
+    int64_t audio_count = 0;
 
     while (!g_should_close && !display_should_close(display)) {
         pump_events();
 
+        // Log connection stats every 10 seconds
+        if (frame_count > 0 && frame_count % 200 == 0) {
+            NDIlib_recv_queue_t queue;
+            NDIlib_recv_get_queue(recv, &queue);
+            log("Queue depth: video=%d, audio=%d", queue.video_frames, queue.audio_frames);
+        }
+
         switch (NDIlib_recv_capture_v2(recv, &video_frame, &audio_frame, nullptr, 5000)) {
             case NDIlib_frame_type_video:
                 consecutive_timeouts = 0;
+                frame_count++;
                 {
                     int w = video_frame.xres;
                     int h = video_frame.yres;
                     int src_pitch = video_frame.line_stride_in_bytes;
 
-                    std::printf("Video frame: %dx%d, pitch=%d, FourCC=%u (UYVY=%u, BGRA=%u, BGRX=%u)\n", 
-                                w, h, src_pitch, 
-                                static_cast<unsigned int>(video_frame.FourCC),
-                                static_cast<unsigned int>(NDIlib_FourCC_type_UYVY),
-                                static_cast<unsigned int>(NDIlib_FourCC_type_BGRA),
-                                static_cast<unsigned int>(NDIlib_FourCC_type_BGRX));
+                    log("Video frame #%lld: %dx%d, pitch=%d, FourCC=%u (UYVY=%u, BGRA=%u, BGRX=%u)", 
+                        (long long)frame_count,
+                        w, h, src_pitch, 
+                        static_cast<unsigned int>(video_frame.FourCC),
+                        static_cast<unsigned int>(NDIlib_FourCC_type_UYVY),
+                        static_cast<unsigned int>(NDIlib_FourCC_type_BGRA),
+                        static_cast<unsigned int>(NDIlib_FourCC_type_BGRX));
 
                     // Validate frame parameters to prevent crashes
                     if (w <= 0 || h <= 0 || src_pitch <= 0) {
-                        std::cerr << "Invalid video frame: " << w << "x" << h << " pitch=" << src_pitch << "\n";
+                        log("ERROR: Invalid video frame: %dx%d pitch=%d", w, h, src_pitch);
                         NDIlib_recv_free_video_v2(recv, &video_frame);
                         break;
                     }
@@ -106,7 +149,7 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                                       src_pitch,
                                       bgr_buffer.data(), w, h);
                     } else {
-                        std::cerr << "Unsupported video format: FourCC=" << video_frame.FourCC << "\n";
+                        log("ERROR: Unsupported video format: FourCC=%u", video_frame.FourCC);
                         NDIlib_recv_free_video_v2(recv, &video_frame);
                         break;
                     }
@@ -119,6 +162,7 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
 
             case NDIlib_frame_type_audio:
                 consecutive_timeouts = 0;
+                audio_count++;
                 if (audio) {
                     audio_push_frame(audio, &audio_frame);
                 }
@@ -126,17 +170,18 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                 break;
 
             case NDIlib_frame_type_error:
-                std::cerr << "NDI receive error\n";
+                log("NDI receive error");
                 return true;
 
             default:
                 consecutive_timeouts++;
                 if (consecutive_timeouts == 1) {
-                    std::printf("Waiting for video frames...\n");
+                    log("Timeout waiting for frames (video=%lld, audio=%lld)...", 
+                        (long long)frame_count, (long long)audio_count);
                 }
                 if (consecutive_timeouts >= max_timeouts) {
-                    std::cerr << "Connection lost (no frames for " 
-                              << (consecutive_timeouts * 5) << "s)\n";
+                    log("Connection lost: no frames for %ds (video=%lld, audio=%lld)", 
+                        consecutive_timeouts * 5, (long long)frame_count, (long long)audio_count);
                     return true;
                 }
                 break;
@@ -166,6 +211,15 @@ int main(int argc, char* argv[]) {
 #else
     printf("open-ndi-monitor v0.1.0\n");
 #endif
+
+    // Open log file
+    const char* home = getenv("HOME");
+    std::string log_path = home ? std::string(home) + "/.open-ndi-monitor.log" : "/tmp/open-ndi-monitor.log";
+    g_logfile.open(log_path, std::ios::app);
+    if (g_logfile.is_open()) {
+        printf("Logging to %s\n", log_path.c_str());
+        log("=== Application started ===");
+    }
 
     // Detect and switch to the logged-in user (for systemd service running as root)
     auto user = detect_logged_in_user();
@@ -350,6 +404,7 @@ int main(int argc, char* argv[]) {
     }
 
     printf("Shutting down...\n");
+    log("=== Application shutting down ===");
 
     // Cleanup
     if (audio) {
@@ -361,5 +416,6 @@ int main(int argc, char* argv[]) {
         audio_close(audio);
     }
 
+    log_close();
     return 0;
 }
