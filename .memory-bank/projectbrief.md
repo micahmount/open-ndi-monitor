@@ -25,3 +25,4 @@
 ## Status
 - Feature-complete for basic NDI display and audio
 - Testing infrastructure in place (Google Test)
+- Version derived from git tags (e.g., v0.1.3)

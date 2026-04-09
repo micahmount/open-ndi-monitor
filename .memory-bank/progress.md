@@ -17,7 +17,7 @@
 
 ## Current Status
 - Feature-complete
-- Version: 0.1.3
+- Version: derived from git tag (e.g., v0.1.3)
 - Binary location: `build/bin/open-ndi-monitor`
 
 ## Known Issues

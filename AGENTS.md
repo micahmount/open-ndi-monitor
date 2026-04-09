@@ -3,22 +3,24 @@
 ## Project
 - C++17 single-binary app (CMake 3.16+)
 - Displays NDI video sources fullscreen via SDL2
-- **Unit tests via Google Test** — run with `ctest` or individual test binaries
+- **Version**: Derived from git tags (e.g., `v1.2.3`)
+- **Unit tests via Google Test** — run with `make test` or individual test binaries
 
 ## Build
 ```
-cmake -B build && cmake --build build
+make build        # Build the project
+make test         # Run tests
+make clean        # Clean all build artifacts
+make install      # Install binary
+make debian       # Build debian package
 ```
 Binary lands in `build/bin/open-ndi-monitor`
 
-## Test
-```
-cd build && ctest --output-on-failure
-# or run individually:
-./build/bin/test_config
-./build/bin/test_color_convert
-./build/bin/test_audio_ring_buffer
-```
+## Versioning
+- Version comes from latest git tag (format: `vMAJOR.MINOR.PATCH`)
+- Example: `git tag -a v0.1.3 -m "Version 0.1.3"`
+- Pre-push hook requires a version tag before pushing
+- Fallback: `0.0.0` if not in a git repository
 
 ## Dependencies (must be installed before building)
 - **NDI SDK**: extracted to `resources/ndi-sdk/NDI SDK for Linux` (included in repo)
@@ -48,5 +50,6 @@ cd build && ctest --output-on-failure
 
 ## Directories
 - `build/` — CMake build output (gitignored)
-- `memory-bank/` — project documentation
-- `resources/` — NDI SDK installer tarball
+- `.memory-bank/` — project documentation (gitignored)
+- `resources/` — NDI SDK
+- `debian/` — Debian packaging

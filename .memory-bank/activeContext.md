@@ -8,6 +8,7 @@ No active development - project is feature-complete.
 - Reconnection logic implemented with exponential backoff
 - Status indicator added (green=connected, red=no signal, yellow=reconnecting)
 - Refactored project structure: renamed `out/` to `build/`
+- Implemented git-based versioning with pre-push hook
 
 ## Next Steps
 - None - project meets requirements

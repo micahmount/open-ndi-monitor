@@ -10,6 +10,7 @@ A lightweight, performant Linux application that displays NDI video sources full
 - **Auto-reconnection** — Automatically reconnects when the source drops (exponential backoff)
 - **Status indicator** — Visual feedback showing connection state (green/yellow/red)
 - **Simple configuration** — INI-style config file, no complex setup
+- **Versioning** — Version derived from git tags (e.g., v0.1.3)
 
 ## Requirements
 
@@ -24,23 +25,20 @@ A lightweight, performant Linux application that displays NDI video sources full
 # Install dependencies
 sudo apt install libsdl2-dev libsamplerate0-dev
 
-# Extract NDI SDK (if not already installed at /opt/ndi/sdk)
-tar -xzf resources/Install_NDI_SDK_v6_Linux.tar.gz -C /opt
-
 # Build
-cmake -B out && cmake --build out
+make build
 ```
 
-The binary will be at `out/bin/open-ndi-monitor`.
+The binary will be at `build/bin/open-ndi-monitor`.
 
 ## Usage
 
 ```bash
 # Run (will prompt for source selection)
-./out/bin/open-ndi-monitor
+./build/bin/open-ndi-monitor
 
 # Or with a config file
-./out/bin/open-ndi-monitor --config /path/to/config.conf
+./build/bin/open-ndi-monitor --config /path/to/config.conf
 ```
 
 ### Config File

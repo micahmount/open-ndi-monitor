@@ -26,12 +26,12 @@
 
 ### Build
 ```bash
-cmake -B build && cmake --build build
+make build
 ```
 
 ### Run Tests
 ```bash
-cd build && ctest --output-on-failure
+make test
 ```
 
 ### Dependencies (Ubuntu/Debian)

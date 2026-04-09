@@ -1,7 +1,3 @@
-# LLM tooling (optional - can be tracked if desired)
-.clineignore
-.clinerules
-
 # IDE cache
 .cache/
 
@@ -9,6 +5,14 @@
 resources/
 ndi-sdk/
 build/
+obj-x86_64-linux-gnu/
+
+# Debian packaging (keep tools, ignore artifacts)
+debian/*.deb
+debian/*.changes
+debian/*.buildinfo
+debian/files
+debian/*.substvars
 
 # Debian packages are built in parent dir
 *.deb

@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
-project(open-ndi-monitor VERSION 0.1.2 LANGUAGES CXX)
+
+# Get version from git tag (e.g., v1.2.3 -> 1.2.3)
+execute_process(COMMAND git describe --tags --abbrev=0 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE GIT_TAG OUTPUT_STRIP_TRAILING_WHITESPACE)
+string(REPLACE "v" "" PROJECT_VERSION "${GIT_TAG}")
+if(NOT PROJECT_VERSION)
+    set(PROJECT_VERSION "0.0.0")  # Fallback for tarball builds
+endif()
+
+project(open-ndi-monitor VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
