@@ -1,3 +1,0 @@
-shlibs:Depends=libavahi-client3 (>= 0.6.16), libavahi-common3 (>= 0.6.16), libc6 (>= 2.38), libgcc-s1 (>= 3.0), libsamplerate0 (>= 0.1.7), libsdl2-2.0-0 (>= 2.0.12), libstdc++6 (>= 13.1), open-ndi-monitor (>= 0.1.0)
-misc:Depends=
-misc:Pre-Depends=
