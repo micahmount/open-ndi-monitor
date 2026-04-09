@@ -77,8 +77,12 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     int h = video_frame.yres;
                     int src_pitch = video_frame.line_stride_in_bytes;
 
-                    std::printf("Video frame: %dx%d, pitch=%d, FourCC=%d\n", 
-                                w, h, src_pitch, video_frame.FourCC);
+                    std::printf("Video frame: %dx%d, pitch=%d, FourCC=%u (UYVY=%u, BGRA=%u, BGRX=%u)\n", 
+                                w, h, src_pitch, 
+                                static_cast<unsigned int>(video_frame.FourCC),
+                                static_cast<unsigned int>(NDIlib_FourCC_type_UYVY),
+                                static_cast<unsigned int>(NDIlib_FourCC_type_BGRA),
+                                static_cast<unsigned int>(NDIlib_FourCC_type_BGRX));
 
                     // Validate frame parameters to prevent crashes
                     if (w <= 0 || h <= 0 || src_pitch <= 0) {
@@ -126,8 +130,10 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                 return true;
 
             default:
-                // Timeout - no frame received
                 consecutive_timeouts++;
+                if (consecutive_timeouts == 1) {
+                    std::printf("Waiting for video frames...\n");
+                }
                 if (consecutive_timeouts >= max_timeouts) {
                     std::cerr << "Connection lost (no frames for " 
                               << (consecutive_timeouts * 5) << "s)\n";

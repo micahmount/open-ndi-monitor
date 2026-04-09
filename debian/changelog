@@ -1,3 +1,9 @@
+open-ndi-monitor (0.1.6) stable; urgency=low
+
+  * Add verbose FourCC debug logging to diagnose video format issues
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.5) stable; urgency=low
 
   * Fix video not displaying - support BGRA/BGRX format from NDI sources
