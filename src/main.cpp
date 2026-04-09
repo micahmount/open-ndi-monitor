@@ -91,9 +91,21 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                         bgr_buffer.resize(w * h * 3);
                     }
 
-                    uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
-                                  src_pitch,
-                                  bgr_buffer.data(), w, h);
+                    // Check for BGRA/BGRX format (most common from NDI sources)
+                    if (video_frame.FourCC == NDIlib_FourCC_type_BGRA ||
+                        video_frame.FourCC == NDIlib_FourCC_type_BGRX) {
+                        bgra_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
+                                      src_pitch,
+                                      bgr_buffer.data(), w, h);
+                    } else if (video_frame.FourCC == NDIlib_FourCC_type_UYVY) {
+                        uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
+                                      src_pitch,
+                                      bgr_buffer.data(), w, h);
+                    } else {
+                        std::cerr << "Unsupported video format: FourCC=" << video_frame.FourCC << "\n";
+                        NDIlib_recv_free_video_v2(recv, &video_frame);
+                        break;
+                    }
 
                     update_display(display, bgr_buffer.data(), w, h);
                     display_draw_text(display, "connected", 20, 20);
@@ -136,7 +148,7 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
 
     NDIlib_recv_create_v3_t recv_desc = {0};
     recv_desc.source_to_connect_to = ndi_source;
-    recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
+    recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
 
     return NDIlib_recv_create_v3(&recv_desc);

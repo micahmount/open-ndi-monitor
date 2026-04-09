@@ -36,3 +36,17 @@ void uyvy_to_bgr24(const uint8_t* src, int src_pitch,
         }
     }
 }
+
+void bgra_to_bgr24(const uint8_t* src, int src_pitch,
+                   uint8_t* dst, int width, int height) {
+    for (int row = 0; row < height; ++row) {
+        const uint8_t* line = src + row * src_pitch;
+        uint8_t* out = dst + row * width * 3;
+
+        for (int col = 0; col < width; col++) {
+            out[col * 3 + 0] = line[col * 4 + 0];  // B
+            out[col * 3 + 1] = line[col * 4 + 1];  // G
+            out[col * 3 + 2] = line[col * 4 + 2];  // R
+        }
+    }
+}
