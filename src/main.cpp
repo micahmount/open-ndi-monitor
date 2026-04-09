@@ -23,6 +23,51 @@ static std::atomic<bool> g_should_close{false};
 
 static std::ofstream g_logfile;
 
+static bool parse_fourcc_from_metadata(const char* xml, char* fourcc_out, size_t fourcc_size) {
+    if (!xml || !fourcc_out) return false;
+    
+    const char* fourcc_tag = "<fourcc>";
+    const char* end_tag = "</fourcc>";
+    const char* ptr = strstr(xml, fourcc_tag);
+    if (ptr) {
+        ptr += strlen(fourcc_tag);
+        const char* end = strstr(ptr, end_tag);
+        if (end) {
+            size_t len = end - ptr;
+            if (len < fourcc_size) {
+                strncpy(fourcc_out, ptr, len);
+                fourcc_out[len] = '\0';
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static bool parse_resolution_from_metadata(const char* xml, int* width_out, int* height_out) {
+    if (!xml || !width_out || !height_out) return false;
+    
+    const char* res_tag = "<resolution>";
+    const char* end_tag = "</resolution>";
+    const char* ptr = strstr(xml, res_tag);
+    if (ptr) {
+        ptr += strlen(res_tag);
+        const char* end = strstr(ptr, end_tag);
+        if (end) {
+            char res[32];
+            size_t len = end - ptr;
+            if (len < sizeof(res)) {
+                strncpy(res, ptr, len);
+                res[len] = '\0';
+                if (sscanf(res, "%dx%d", width_out, height_out) == 2) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 void log(const char* fmt, ...) {
     char buf[1024];
     va_list args;
@@ -123,6 +168,17 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
             case NDIlib_frame_type_metadata:
                 if (meta_frame.p_data) {
                     log("Metadata: %s", meta_frame.p_data);
+                    
+                    char fourcc[16];
+                    if (parse_fourcc_from_metadata(meta_frame.p_data, fourcc, sizeof(fourcc))) {
+                        log("Source format - FourCC: %s", fourcc);
+                    }
+                    
+                    int width = 0, height = 0;
+                    if (parse_resolution_from_metadata(meta_frame.p_data, &width, &height)) {
+                        log("Source format - Resolution: %dx%d", width, height);
+                    }
+                    
                     NDIlib_recv_free_metadata(recv, &meta_frame);
                 }
                 break;
