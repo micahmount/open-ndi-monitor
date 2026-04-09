@@ -75,6 +75,9 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     int h = video_frame.yres;
                     int src_pitch = video_frame.line_stride_in_bytes;
 
+                    std::printf("Video frame: %dx%d, pitch=%d, FourCC=%d\n", 
+                                w, h, src_pitch, video_frame.FourCC);
+
                     // Validate frame parameters to prevent crashes
                     if (w <= 0 || h <= 0 || src_pitch <= 0) {
                         std::cerr << "Invalid video frame: " << w << "x" << h << " pitch=" << src_pitch << "\n";

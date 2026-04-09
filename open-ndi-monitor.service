@@ -8,6 +8,7 @@ ExecStart=/usr/bin/open-ndi-monitor
 Restart=on-failure
 RestartSec=5
 Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 StandardOutput=journal
 StandardError=journal
 

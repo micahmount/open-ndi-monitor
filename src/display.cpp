@@ -44,6 +44,8 @@ DisplayContext* create_display(int display_index, const std::string& title) {
         return nullptr;
     }
 
+    std::printf("Window created: %dx%d, display=%d\n", bounds.w, bounds.h, display_index);
+
     ctx->renderer = SDL_CreateRenderer(ctx->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!ctx->renderer) {
         std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << "\n";
@@ -53,15 +55,24 @@ DisplayContext* create_display(int display_index, const std::string& title) {
         return nullptr;
     }
 
+    std::printf("Renderer created\n");
+
     SDL_SetRenderDrawColor(ctx->renderer, 0, 0, 0, 255);
     SDL_RenderClear(ctx->renderer);
     SDL_RenderPresent(ctx->renderer);
+
+    // Raise window to make sure it's visible
+    SDL_RaiseWindow(ctx->window);
+    std::printf("Window raised\n");
 
     return ctx;
 }
 
 void update_display(DisplayContext* ctx, const void* pixels, int width, int height) {
-    if (!ctx || !ctx->renderer) return;
+    if (!ctx || !ctx->renderer) {
+        std::cerr << "update_display: null context or renderer\n";
+        return;
+    }
 
     // Validate dimensions to prevent crashes
     if (width <= 0 || height <= 0) {
@@ -84,6 +95,7 @@ void update_display(DisplayContext* ctx, const void* pixels, int width, int heig
         }
         ctx->width = width;
         ctx->height = height;
+        std::printf("Created texture: %dx%d\n", width, height);
     }
 
     if (ctx->texture) {
@@ -103,6 +115,7 @@ void update_display(DisplayContext* ctx, const void* pixels, int width, int heig
         SDL_RenderClear(ctx->renderer);
         SDL_RenderCopy(ctx->renderer, ctx->texture, nullptr, nullptr);
         SDL_RenderPresent(ctx->renderer);
+        std::printf("Rendered frame\n");
     }
 }
 

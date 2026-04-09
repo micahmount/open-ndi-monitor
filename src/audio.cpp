@@ -21,6 +21,8 @@ struct AudioContext {
 // SDL audio callback - pulls from ring buffer, outputs silence on underrun
 static void sdl_audio_callback(void* userdata, Uint8* stream, int len) {
     auto* ctx = static_cast<AudioContext*>(userdata);
+    if (!ctx || ctx->channels == 0) return;
+    
     float* out = reinterpret_cast<float*>(stream);
     size_t frames_needed = len / (sizeof(float) * ctx->channels);
 
