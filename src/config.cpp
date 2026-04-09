@@ -39,6 +39,7 @@ std::optional<Config> load_config(const std::string& path) {
                 cfg.display_index = 0;
             }
         }
+        else if (key == "audio_device") cfg.audio_device = val;
     }
 
     return cfg;
@@ -52,6 +53,7 @@ bool save_config(const Config& cfg, const std::string& path) {
     file << "source_name=" << cfg.source_name << "\n";
     file << "fullscreen=" << (cfg.fullscreen ? "true" : "false") << "\n";
     file << "display_index=" << cfg.display_index << "\n";
+    file << "audio_device=" << cfg.audio_device << "\n";
 
     return file.good();
 }

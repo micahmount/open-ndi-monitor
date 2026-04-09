@@ -159,8 +159,13 @@ int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         if (std::strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
             config_path = argv[++i];
+        } else if (std::strcmp(argv[i], "--audio-device") == 0 && i + 1 < argc) {
+            cfg.audio_device = argv[++i];
+        } else if (std::strcmp(argv[i], "--list-audio-devices") == 0) {
+            audio_list_devices();
+            return 0;
         } else if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
-            printf("Usage: open-ndi-monitor [--config <path>]\n");
+            printf("Usage: open-ndi-monitor [--config <path>] [--audio-device <name>] [--list-audio-devices]\n");
             return 0;
         }
     }
@@ -200,7 +205,15 @@ int main(int argc, char* argv[]) {
     }
 
     // Initialize audio
-    AudioContext* audio = audio_init();
+    std::string audio_device = cfg.audio_device;
+    if (audio_device.empty()) {
+        // Try to auto-detect HDMI device
+        audio_device = audio_find_hdmi_device();
+        if (!audio_device.empty()) {
+            printf("Auto-detected HDMI audio device: %s\n", audio_device.c_str());
+        }
+    }
+    AudioContext* audio = audio_init_with_device(audio_device);
     if (audio) {
         printf("Audio initialized\n");
     } else {

@@ -9,6 +9,7 @@ User=atrium
 Environment=XAUTHORITY=/home/atrium/.Xauthority
 Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=SDL_AUDIODRIVER=alsa
 ExecStartPre=/usr/bin/sleep 1
 ExecStart=/usr/bin/open-ndi-monitor
 Restart=on-failure
