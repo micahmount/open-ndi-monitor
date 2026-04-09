@@ -204,6 +204,7 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
 
                     if (bgr_buffer.size() < static_cast<size_t>(w * h * 3)) {
                         bgr_buffer.resize(w * h * 3);
+                        memset(bgr_buffer.data(), 128, w * h * 3);
                     }
 
                     bool converted = false;
@@ -285,12 +286,12 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
 
     NDIlib_recv_create_v3_t recv_desc = {0};
     recv_desc.source_to_connect_to = ndi_source;
-    recv_desc.color_format = NDIlib_recv_color_format_fastest;
+    recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
     recv_desc.allow_video_fields = true;
     recv_desc.p_ndi_recv_name = "open-ndi-monitor";
 
-    log("Creating receiver: color_format=fastest, bandwidth=highest, allow_video_fields=true");
+    log("Creating receiver: color_format=BGRX_BGRA, bandwidth=highest");
 
     return NDIlib_recv_create_v3(&recv_desc);
 }

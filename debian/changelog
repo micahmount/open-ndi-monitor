@@ -1,3 +1,10 @@
+open-ndi-monitor (0.1.13) stable; urgency=low
+
+  * Force BGRX color format for better compatibility
+  * Initialize bgr_buffer with gray to debug display issues
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.12) stable; urgency=low
 
   * Add --enable-audio flag to disable audio for debugging
