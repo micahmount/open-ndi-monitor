@@ -287,10 +287,10 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
     recv_desc.source_to_connect_to = ndi_source;
     recv_desc.color_format = NDIlib_recv_color_format_fastest;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
-    recv_desc.allow_video_fields = false;
+    recv_desc.allow_video_fields = true;
     recv_desc.p_ndi_recv_name = "open-ndi-monitor";
 
-    log("Creating receiver: color_format=fastest, bandwidth=highest");
+    log("Creating receiver: color_format=fastest, bandwidth=highest, allow_video_fields=true");
 
     return NDIlib_recv_create_v3(&recv_desc);
 }
@@ -343,7 +343,7 @@ int main(int argc, char* argv[]) {
             audio_list_devices();
             return 0;
         } else if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
-            printf("Usage: open-ndi-monitor [--config <path>] [--audio-device <name>] [--list-audio-devices]\n");
+            printf("Usage: open-ndi-monitor [--config <path>] [--audio-device <name>] [--list-audio-devices] [--enable-audio]\n");
             return 0;
         }
     }
@@ -382,20 +382,31 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Initialize audio
-    std::string audio_device = cfg.audio_device;
-    if (audio_device.empty()) {
-        // Try to auto-detect HDMI device
-        audio_device = audio_find_hdmi_device();
-        if (!audio_device.empty()) {
-            printf("Auto-detected HDMI audio device: %s\n", audio_device.c_str());
+    // Initialize audio (disable for debugging - pass --enable-audio to re-enable)
+    AudioContext* audio = nullptr;
+    bool audio_enabled = false;
+    for (int i = 1; i < argc; i++) {
+        if (std::strcmp(argv[i], "--enable-audio") == 0) {
+            audio_enabled = true;
         }
     }
-    AudioContext* audio = audio_init_with_device(audio_device);
-    if (audio) {
-        printf("Audio initialized\n");
+    
+    if (audio_enabled) {
+        std::string audio_device = cfg.audio_device;
+        if (audio_device.empty()) {
+            audio_device = audio_find_hdmi_device();
+            if (!audio_device.empty()) {
+                printf("Auto-detected HDMI audio device: %s\n", audio_device.c_str());
+            }
+        }
+        audio = audio_init_with_device(audio_device);
+        if (audio) {
+            printf("Audio initialized\n");
+        } else {
+            printf("Audio initialization failed\n");
+        }
     } else {
-        printf("Audio initialization failed, video only\n");
+        printf("Audio disabled (use --enable-audio to enable)\n");
     }
 
     // Initialize NDI library (once, for the lifetime of the app)
@@ -426,11 +437,15 @@ int main(int argc, char* argv[]) {
             printf("Receiving video (press Escape to quit)...\n");
             display_draw_text(display, "connected", 20, 20);
 
-            // Query connected source name
-            const char* connected_name = nullptr;
-            if (NDIlib_recv_get_source_name(recv, &connected_name, 5000) && connected_name) {
-                log("Connected to source: %s", connected_name);
+            // Wait for connection to establish (up to 5 seconds)
+            log("Waiting for connection...");
+            int wait_count = 0;
+            while (NDIlib_recv_get_no_connections(recv) == 0 && wait_count < 50) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                wait_count++;
+                pump_events();
             }
+            log("Connection established (waited %d00ms)", wait_count);
 
             // Run receive loop - returns true if connection lost
             bool connection_lost = receive_loop(recv, display, audio, bgr_buffer);

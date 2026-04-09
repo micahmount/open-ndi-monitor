@@ -1,3 +1,10 @@
+open-ndi-monitor (0.1.12) stable; urgency=low
+
+  * Add --enable-audio flag to disable audio for debugging
+  * Wait for connection before entering receive loop
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.11) stable; urgency=low
 
   * Parse NDI format metadata to extract FourCC and resolution
