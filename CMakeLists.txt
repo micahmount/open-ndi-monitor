@@ -63,6 +63,7 @@ if(SDL2_FOUND AND SAMPLERATE_FOUND)
         src/color_convert.cpp
         src/audio_ring_buffer.cpp
         src/audio.cpp
+        src/user_detect.cpp
     )
 
     target_include_directories(open-ndi-monitor PRIVATE
@@ -103,6 +104,11 @@ if(TARGET GTest::gtest_main)
     target_include_directories(test_audio_ring_buffer PRIVATE ${CMAKE_SOURCE_DIR}/include)
     target_link_libraries(test_audio_ring_buffer PRIVATE GTest::gtest_main)
     add_test(NAME test_audio_ring_buffer COMMAND test_audio_ring_buffer)
+
+    add_executable(test_user_detect tests/test_user_detect.cpp src/user_detect.cpp)
+    target_include_directories(test_user_detect PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_link_libraries(test_user_detect PRIVATE GTest::gtest_main)
+    add_test(NAME test_user_detect COMMAND test_user_detect)
 endif()
 
 # Install - only if main app was built

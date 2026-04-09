@@ -1,3 +1,10 @@
+open-ndi-monitor (0.1.3) stable; urgency=low
+
+  * Remove hardcoded user from systemd service
+  * Add user detection at runtime to support any logged-in user
+
+ -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.2) stable; urgency=low
 
   * Update maintainer email and homepage

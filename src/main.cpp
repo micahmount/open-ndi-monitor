@@ -6,6 +6,7 @@
 #include <atomic>
 #include <vector>
 #include <cstdint>
+#include <unistd.h>
 #include <SDL2/SDL.h>
 #include <Processing.NDI.Lib.h>
 #include "config.h"
@@ -13,6 +14,7 @@
 #include "display.h"
 #include "color_convert.h"
 #include "audio.h"
+#include "user_detect.h"
 
 static std::atomic<bool> g_should_close{false};
 
@@ -146,6 +148,20 @@ int main(int argc, char* argv[]) {
 #else
     printf("open-ndi-monitor v0.1.0\n");
 #endif
+
+    // Detect and switch to the logged-in user (for systemd service running as root)
+    auto user = detect_logged_in_user();
+    if (user) {
+        printf("Detected user: %s (uid=%d)\n", user->username.c_str(), user->uid);
+        if (getuid() == 0) {
+            if (switch_to_user(*user)) {
+                printf("Switched to user %s\n", user->username.c_str());
+            } else {
+                fprintf(stderr, "Warning: Could not switch to user %s, continuing as root\n", 
+                        user->username.c_str());
+            }
+        }
+    }
 
     if (!check_dependencies()) {
         return 1;
