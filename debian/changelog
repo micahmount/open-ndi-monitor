@@ -1,3 +1,10 @@
+open-ndi-monitor (0.1.4) stable; urgency=low
+
+  * Exit gracefully when stream ends instead of freezing
+  * Reconnect for 10 seconds before exiting (handles brief glitches)
+
+ -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.3) stable; urgency=low
 
   * Remove hardcoded user from systemd service

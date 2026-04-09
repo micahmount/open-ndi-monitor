@@ -247,10 +247,7 @@ int main(int argc, char* argv[]) {
     // BGR24 output buffer (allocated once, reused)
     std::vector<uint8_t> bgr_buffer;
 
-    // Reconnection loop
-    int reconnect_attempts = 0;
-    const int max_reconnect_delay_ms = 30000;  // 30s cap
-    const int base_reconnect_delay_ms = 1000;   // 1s start
+    const int reconnect_timeout_ms = 10000;  // 10 seconds to try reconnecting
 
     while (!g_should_close && !display_should_close(display)) {
         // Create receiver
@@ -270,74 +267,68 @@ int main(int argc, char* argv[]) {
             // Run receive loop - returns true if connection lost
             bool connection_lost = receive_loop(recv, display, audio, bgr_buffer);
 
-            // Stop audio while reconnecting
+            // Stop audio
             if (audio) {
                 audio_stop(audio);
             }
 
+            NDIlib_recv_destroy(recv);
+
             if (!connection_lost) {
                 // User quit
-                NDIlib_recv_destroy(recv);
                 break;
             }
 
-            NDIlib_recv_destroy(recv);
-        }
+            // Connection lost - try to reconnect within timeout
+            printf("Connection lost, attempting to reconnect...\n");
+            display_draw_text(display, "reconnecting", 20, 20);
 
-        // Reconnection with exponential backoff
-        reconnect_attempts++;
-        int delay_ms = std::min(base_reconnect_delay_ms * (1 << (reconnect_attempts - 1)),
-                                max_reconnect_delay_ms);
+            auto reconnect_start = std::chrono::steady_clock::now();
+            bool reconnected = false;
 
-        printf("Reconnecting in %dms (attempt %d)...\n", delay_ms, reconnect_attempts);
-        display_draw_text(display, "reconnecting", 20, 20);
+            while (!g_should_close && !display_should_close(display)) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - reconnect_start).count();
 
-        // Pump events during reconnect delay
-        auto reconnect_start = std::chrono::steady_clock::now();
-        while (!g_should_close && !display_should_close(display)) {
-            pump_events();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - reconnect_start).count();
-            if (elapsed >= delay_ms) break;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (elapsed >= reconnect_timeout_ms) {
+                    break;  // Timeout exceeded
+                }
+
+                pump_events();
+
+                // Try to reconnect
+                auto test_sources = discover_sources(2000);
+                for (const auto& src : test_sources) {
+                    if (src.name == selected.name) {
+                        selected.url_address = src.url_address;
+                        printf("Reconnected to %s\n", selected.name.c_str());
+                        reconnected = true;
+                        break;
+                    }
+                }
+
+                if (reconnected) break;
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
+
+            if (reconnected) {
+                continue;  // Try to receive again
+            }
+
+            // Failed to reconnect within timeout - exit to let systemd restart
+            std::cout << "Failed to reconnect within " << (reconnect_timeout_ms / 1000)
+                      << "s, exiting for restart\n";
+            g_should_close = true;
+            break;
         }
 
         if (g_should_close || display_should_close(display)) {
             break;
         }
 
-        // Try the same URL first, then re-discover if that fails
-        printf("Trying to reconnect to %s...\n", selected.name.c_str());
-        auto test_sources = discover_sources(5000);
-
-        bool found = false;
-        for (const auto& src : test_sources) {
-            if (src.name == selected.name) {
-                found = true;
-                selected.url_address = src.url_address;  // URL may have changed
-                printf("Found source at %s\n", src.url_address.c_str());
-                break;
-            }
-        }
-
-        if (!found) {
-            printf("Source not found at original URL, showing source list...\n");
-            if (test_sources.empty()) {
-                printf("No NDI sources on network, waiting...\n");
-                continue;  // Will retry with same source info
-            }
-
-            int new_idx = select_source_cli(test_sources, cfg.source_name);
-            if (new_idx < 0) {
-                printf("No source selected, will retry original...\n");
-                continue;
-            }
-            selected = test_sources[new_idx];
-            reconnect_attempts = 0;  // Reset backoff for new source
-        } else {
-            // Found the same source, reset backoff
-            reconnect_attempts = 0;
-        }
+        // Wait before checking again
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
     printf("Shutting down...\n");
