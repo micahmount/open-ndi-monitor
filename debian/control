@@ -1,7 +1,7 @@
 Source: open-ndi-monitor
 Section: video
 Priority: optional
-Maintainer: micah <micah>
+Maintainer: Micah Mount <micah.mount@open-ndi-monitor.com>
 Build-Depends: cmake, pkg-config, libsdl2-dev, libsamplerate0-dev, debhelper-compat (= 13)
 Standards-Version: 4.6.0
 Homepage: https://github.com/anomalyco/open-ndi-monitor

@@ -84,6 +84,17 @@ AudioRingBuffer* audio_buffer(AudioContext* ctx) {
 void audio_reconfigure(AudioContext* ctx, int source_rate, int channels) {
     if (!ctx) return;
 
+    // Guard against invalid values
+    if (source_rate <= 0 || channels <= 0) {
+        std::cerr << "Invalid audio params: " << source_rate << "Hz, " << channels << "ch\n";
+        return;
+    }
+
+    // If nothing changed, skip
+    if (ctx->source_rate == source_rate && ctx->channels == channels) {
+        return;
+    }
+
     // If nothing changed, skip
     if (ctx->source_rate == source_rate && ctx->channels == channels) {
         return;
@@ -146,6 +157,13 @@ void audio_push_frame(AudioContext* ctx, const NDIlib_audio_frame_v2_t* frame) {
     int channels = frame->no_channels;
     int samples = frame->no_samples;
     int source_rate = frame->sample_rate;
+
+    // Validate before reconfigure to prevent division by zero
+    if (source_rate <= 0 || channels <= 0 || samples <= 0) {
+        std::cerr << "Invalid audio frame: rate=" << source_rate 
+                  << "Hz, channels=" << channels << ", samples=" << samples << "\n";
+        return;
+    }
 
     // Reconfigure if source rate or channels changed
     audio_reconfigure(ctx, source_rate, channels);

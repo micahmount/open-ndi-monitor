@@ -32,7 +32,13 @@ std::optional<Config> load_config(const std::string& path) {
 
         if (key == "source_name") cfg.source_name = val;
         else if (key == "fullscreen") cfg.fullscreen = (val == "true" || val == "1");
-        else if (key == "display_index") cfg.display_index = std::stoi(val);
+        else if (key == "display_index") {
+            try {
+                cfg.display_index = std::stoi(val);
+            } catch (...) {
+                cfg.display_index = 0;
+            }
+        }
     }
 
     return cfg;

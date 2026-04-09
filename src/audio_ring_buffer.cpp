@@ -3,7 +3,12 @@
 
 AudioRingBuffer::AudioRingBuffer(size_t capacity_frames, int channels)
     : capacity_(capacity_frames), channels_(channels) {
-    buffer_ = new float[capacity_frames * channels];
+    if (channels_ <= 0) channels_ = 1;
+    if (capacity_ == 0) {
+        buffer_ = nullptr;
+    } else {
+        buffer_ = new float[capacity_frames * channels_];
+    }
     write_pos_.store(0);
     read_pos_.store(0);
 }
@@ -13,6 +18,8 @@ AudioRingBuffer::~AudioRingBuffer() {
 }
 
 size_t AudioRingBuffer::push(const float* data, size_t frames) {
+    if (!buffer_ || capacity_ == 0 || channels_ <= 0) return 0;
+    
     size_t write = write_pos_.load(std::memory_order_relaxed);
     size_t read  = read_pos_.load(std::memory_order_acquire);
 

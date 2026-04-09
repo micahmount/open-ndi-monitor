@@ -107,3 +107,46 @@ TEST(ColorConvertTest, PitchHandling) {
         EXPECT_GE(dst[i*3], 200); // white
     }
 }
+
+TEST(ColorConvertTest, EdgeCaseWidthOne) {
+    int width = 1, height = 1;
+    std::vector<uint8_t> src(width * 2 * height);
+    src[0] = 128; src[1] = 255; src[2] = 128; src[3] = 255;
+    
+    std::vector<uint8_t> dst(width * height * 3);
+    EXPECT_NO_THROW(uyvy_to_bgr24(src.data(), width * 2, dst.data(), width, height));
+}
+
+TEST(ColorConvertTest, EdgeCaseOddWidth) {
+    int width = 3, height = 1;
+    std::vector<uint8_t> src(width * 2 * height);
+    for (int i = 0; i < 6; i++) src[i] = 128;
+    
+    std::vector<uint8_t> dst(width * height * 3);
+    EXPECT_NO_THROW(uyvy_to_bgr24(src.data(), width * 2, dst.data(), width, height));
+}
+
+TEST(ColorConvertTest, EdgeCaseZeroWidth) {
+    int width = 0, height = 1;
+    std::vector<uint8_t> src(10);
+    std::vector<uint8_t> dst(10);
+    EXPECT_NO_THROW(uyvy_to_bgr24(src.data(), 10, dst.data(), width, height));
+}
+
+TEST(ColorConvertTest, EdgeCaseNegativeWidth) {
+    int width = -1, height = 1;
+    std::vector<uint8_t> src(10);
+    std::vector<uint8_t> dst(10);
+    EXPECT_NO_THROW(uyvy_to_bgr24(src.data(), 10, dst.data(), width, height));
+}
+
+TEST(ColorConvertTest, EdgeCasePitchMismatch) {
+    int width = 4, height = 1;
+    int pitch = 20; // much larger than needed
+    std::vector<uint8_t> src(pitch);
+    src[0] = 128; src[1] = 255; src[2] = 128; src[3] = 255;
+    src[4] = 128; src[5] = 255; src[6] = 128; src[7] = 255;
+    
+    std::vector<uint8_t> dst(width * height * 3);
+    EXPECT_NO_THROW(uyvy_to_bgr24(src.data(), pitch, dst.data(), width, height));
+}

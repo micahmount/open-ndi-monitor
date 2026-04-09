@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(open-ndi-monitor VERSION 0.1.0 LANGUAGES CXX)
+project(open-ndi-monitor VERSION 0.1.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # NDI SDK
-set(NDI_SDK_PATH "${CMAKE_SOURCE_DIR}/ndi-sdk/NDI SDK for Linux")
+set(NDI_SDK_PATH "${CMAKE_SOURCE_DIR}/resources/ndi-sdk/NDI SDK for Linux")
 find_path(NDI_INCLUDE_DIR NAMES Processing.NDI.Lib.h PATHS "${NDI_SDK_PATH}/include" NO_DEFAULT_PATH)
 find_library(NDI_LIBRARY NAMES ndi PATHS "${NDI_SDK_PATH}/lib/x86_64-linux-gnu" NO_DEFAULT_PATH)
 
@@ -79,43 +79,35 @@ else()
     message(STATUS "Skipping main app build - missing dependencies")
 endif()
 
-# Tests - install separately so they don't go in runtime package
-add_executable(test_config tests/test_config.cpp src/config.cpp)
-target_include_directories(test_config PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_config PRIVATE GTest::gtest_main)
-install(TARGETS test_config DESTINATION bin COMPONENT Test)
+# Tests - conditionally build if GTest target exists (FetchContent or find_package)
+if(TARGET GTest::gtest_main)
+    add_executable(test_config tests/test_config.cpp src/config.cpp)
+    target_include_directories(test_config PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_link_libraries(test_config PRIVATE GTest::gtest_main)
+    add_test(NAME test_config COMMAND test_config)
 
-add_executable(test_color_convert tests/test_color_convert.cpp src/color_convert.cpp)
-target_include_directories(test_color_convert PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_color_convert PRIVATE GTest::gtest_main)
-install(TARGETS test_color_convert DESTINATION bin COMPONENT Test)
+    add_executable(test_color_convert tests/test_color_convert.cpp src/color_convert.cpp)
+    target_include_directories(test_color_convert PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_link_libraries(test_color_convert PRIVATE GTest::gtest_main)
+    add_test(NAME test_color_convert COMMAND test_color_convert)
 
-add_executable(test_audio_ring_buffer tests/test_audio_ring_buffer.cpp src/audio_ring_buffer.cpp)
-target_include_directories(test_audio_ring_buffer PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_audio_ring_buffer PRIVATE GTest::gtest_main)
-install(TARGETS test_audio_ring_buffer DESTINATION bin COMPONENT Test)
+    add_executable(test_audio_ring_buffer tests/test_audio_ring_buffer.cpp src/audio_ring_buffer.cpp)
+    target_include_directories(test_audio_ring_buffer PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_link_libraries(test_audio_ring_buffer PRIVATE GTest::gtest_main)
+    add_test(NAME test_audio_ring_buffer COMMAND test_audio_ring_buffer)
+endif()
 
-include(GoogleTest)
-gtest_discover_tests(test_config test_color_convert test_audio_ring_buffer)
-
-# Install - only if main app was built (not tests)
+# Install - only if main app was built
 if(TARGET open-ndi-monitor)
-    install(TARGETS open-ndi-monitor DESTINATION bin COMPONENT Runtime)
-    # Install NDI library to standard system path for dynamic linker
-    install(DIRECTORY "${NDI_SDK_PATH}/lib/x86_64-linux-gnu/" DESTINATION lib/x86_64-linux-gnu COMPONENT Runtime FILES_MATCHING PATTERN "libndi.so*")
-    install(FILES "${CMAKE_SOURCE_DIR}/open-ndi-monitor.service" DESTINATION lib/systemd/system COMPONENT Runtime)
+    # Define version at compile time for the binary
+    target_compile_definitions(open-ndi-monitor PRIVATE APP_VERSION="${PROJECT_VERSION}")
 
-    # CPack Debian
-    set(CPACK_PACKAGE_NAME "open-ndi-monitor")
-    set(CPACK_PACKAGE_VERSION "0.1.0")
-    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "NDI video monitor")
-    set(CPACK_PACKAGE_MAINTAINER "micah")
-    set(CPACK_PACKAGE_CONTACT "micah")
-    set(CPACK_GENERATOR "DEB")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsamplerate0")
-    set(CPACK_DEBIAN_PACKAGE_REPLACES "ndi-sdk")
-    set(CPACK_DEBIAN_PACKAGE_SECTION "video")
-    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-    set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-    include(CPack)
+    # Install main binary
+    install(TARGETS open-ndi-monitor DESTINATION bin)
+
+    # Install NDI library
+    install(DIRECTORY "${NDI_SDK_PATH}/lib/x86_64-linux-gnu/" DESTINATION lib/x86_64-linux-gnu FILES_MATCHING PATTERN "libndi.so*")
+
+    # Install systemd service
+    install(FILES "${CMAKE_SOURCE_DIR}/open-ndi-monitor.service" DESTINATION lib/systemd/system)
 endif()

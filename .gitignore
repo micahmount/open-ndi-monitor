@@ -1,14 +1,14 @@
-# LLM tooling should be ignored
-AGENTS.md
-memory-bank/
+# LLM tooling (optional - can be tracked if desired)
 .clineignore
 .clinerules
+
+# IDE cache
+.cache/
 
 # Build artifacts and external dependencies
 resources/
 ndi-sdk/
-out/
-Testing/
+build/
 
 # Debian packages are built in parent dir
 *.deb

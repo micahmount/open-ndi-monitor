@@ -2,6 +2,3 @@
 
 %:
 	dh $@ --buildsystem=cmake
-
-override_dh_auto_configure:
-	dh_auto_configure -- -DNDI_SDK_PATH="$(CURDIR)/ndi-sdk/NDI SDK for Linux"

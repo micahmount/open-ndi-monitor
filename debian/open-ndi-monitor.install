@@ -1,4 +1,0 @@
-usr/bin/open-ndi-monitor
-usr/lib/x86_64-linux-gnu/libndi.so*
-usr/lib/systemd/system/open-ndi-monitor.service
-usr/share/man/man1/open-ndi-monitor.1

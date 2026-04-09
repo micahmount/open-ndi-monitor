@@ -16,6 +16,33 @@
 
 static std::atomic<bool> g_should_close{false};
 
+void print_dependency_error() {
+    std::cerr << "Missing required dependencies. Install with:\n";
+    std::cerr << "  sudo apt install libsdl2-2.0 libsamplerate0\n";
+    std::cerr << "Or if using .deb package: sudo apt install -f\n";
+}
+
+bool check_dependencies() {
+    void* sdl = SDL_LoadObject("libSDL2-2.0.so.0");
+    if (!sdl) {
+        std::cerr << "Error: SDL2 not found\n";
+        print_dependency_error();
+        return false;
+    }
+    SDL_UnloadObject(sdl);
+
+    void* ndi = SDL_LoadObject("libndi.so.6");
+    if (!ndi) {
+        std::cerr << "Error: NDI runtime not found\n";
+        std::cerr << "Install the .deb package or copy NDI libs to system:\n";
+        std::cerr << "  sudo cp /path/to/libndi.so* /usr/lib/x86_64-linux-gnu/\n";
+        return false;
+    }
+    SDL_UnloadObject(ndi);
+
+    return true;
+}
+
 // Wrapper that pumps events and checks for close signals
 void pump_events() {
     SDL_Event event;
@@ -46,12 +73,19 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                 {
                     int w = video_frame.xres;
                     int h = video_frame.yres;
+                    int src_pitch = video_frame.line_stride_in_bytes;
+
+                    // Validate frame parameters to prevent crashes
+                    if (w <= 0 || h <= 0 || src_pitch <= 0) {
+                        std::cerr << "Invalid video frame: " << w << "x" << h << " pitch=" << src_pitch << "\n";
+                        NDIlib_recv_free_video_v2(recv, &video_frame);
+                        break;
+                    }
 
                     if (bgr_buffer.size() < static_cast<size_t>(w * h * 3)) {
                         bgr_buffer.resize(w * h * 3);
                     }
 
-                    int src_pitch = video_frame.line_stride_in_bytes;
                     uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
                                   src_pitch,
                                   bgr_buffer.data(), w, h);
@@ -104,7 +138,15 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
 }
 
 int main(int argc, char* argv[]) {
+#ifdef APP_VERSION
+    printf("open-ndi-monitor v%s\n", APP_VERSION);
+#else
     printf("open-ndi-monitor v0.1.0\n");
+#endif
+
+    if (!check_dependencies()) {
+        return 1;
+    }
 
     // Load config
     Config cfg;

@@ -91,3 +91,34 @@ TEST(AudioRingBufferTest, FreeSpace) {
     buf.pop(out.data(), 10);
     EXPECT_EQ(buf.free_space(), 90);
 }
+
+TEST(AudioRingBufferTest, EdgeCaseZeroCapacity) {
+    AudioRingBuffer buf(0, 2);
+    EXPECT_EQ(buf.channels(), 2);
+    EXPECT_EQ(buf.free_space(), 0);
+}
+
+TEST(AudioRingBufferTest, EdgeCaseZeroChannels) {
+    AudioRingBuffer buf(1024, 0);
+    EXPECT_EQ(buf.channels(), 1);
+    std::vector<float> data(10);
+    size_t written = buf.push(data.data(), 5);
+    EXPECT_EQ(written, 5);
+}
+
+TEST(AudioRingBufferTest, EdgeCasePushMoreThanCapacity) {
+    AudioRingBuffer buf(2, 1);
+    std::vector<float> data(100, 1.0f);
+    size_t written = buf.push(data.data(), 100);
+    EXPECT_EQ(written, 2);
+}
+
+TEST(AudioRingBufferTest, EdgeCasePopMoreThanAvailable) {
+    AudioRingBuffer buf(10, 1);
+    std::vector<float> data(5, 1.0f);
+    buf.push(data.data(), 5);
+    
+    std::vector<float> out(100, 0.0f);
+    size_t read = buf.pop(out.data(), 100);
+    EXPECT_EQ(read, 5);
+}

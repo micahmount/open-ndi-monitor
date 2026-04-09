@@ -63,6 +63,12 @@ DisplayContext* create_display(int display_index, const std::string& title) {
 void update_display(DisplayContext* ctx, const void* pixels, int width, int height) {
     if (!ctx || !ctx->renderer) return;
 
+    // Validate dimensions to prevent crashes
+    if (width <= 0 || height <= 0) {
+        std::cerr << "update_display: invalid dimensions " << width << "x" << height << "\n";
+        return;
+    }
+
     // Recreate texture if size changed
     if (!ctx->texture || ctx->width != width || ctx->height != height) {
         if (ctx->texture) SDL_DestroyTexture(ctx->texture);
@@ -72,6 +78,10 @@ void update_display(DisplayContext* ctx, const void* pixels, int width, int heig
             SDL_TEXTUREACCESS_STREAMING,
             width, height
         );
+        if (!ctx->texture) {
+            std::cerr << "SDL_CreateTexture failed: " << SDL_GetError() << "\n";
+            return;
+        }
         ctx->width = width;
         ctx->height = height;
     }
