@@ -1,33 +1,16 @@
-open-ndi-monitor (0.1.18) stable; urgency=low
+open-ndi-monitor (0.1.1) stable; urgency=low
 
   * Auto-detect HDMI audio device using aplay
   * Add audio_device config option
-  * Add --audio-device command line flag
-  * Add --list-audio-devices to list available audio outputs
+  * Add --audio-device and --list-audio-devices flags
   * Add SDL_AUDIODRIVER=alsa in systemd service
   * Change audio format from float to int16 for ALSA compatibility
-  * Update systemd service to auto-detect HDMI (no hardcoded device)
 
  -- micah <micah>  Thu, 09 Apr 2026 00:00:00 +0000
 
-open-ndi-monitor (0.1.12) stable; urgency=low
+open-ndi-monitor (0.1.0) stable; urgency=low
 
-  * Add window/renderer creation debug logging
-  * Add SDL_RaiseWindow to ensure visibility
-
- -- micah <micah>  Thu, 09 Apr 2026 00:00:00 +0000
-
-open-ndi-monitor (0.1.9) stable; urgency=low
-
-  * Add display and video frame debug logging
-  * Fix XDG_RUNTIME_DIR in systemd service
-  * Fix divide-by-zero crash in audio callback
-
- -- micah <micah>  Thu, 09 Apr 2026 00:00:00 +0000
-
-open-ndi-monitor (0.1.8) stable; urgency=low
-
-  * Initial Debian release
+  * Initial release
   * Fullscreen NDI video monitoring via SDL2
   * Audio output with libsamplerate resampling to 48kHz
   * Automatic reconnection with exponential backoff

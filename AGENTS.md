@@ -19,8 +19,20 @@ Binary lands in `build/bin/open-ndi-monitor`
 ## Versioning
 - Version comes from latest git tag (format: `vMAJOR.MINOR.PATCH`)
 - Example: `git tag -a v0.1.3 -m "Version 0.1.3"`
-- Pre-push hook requires a version tag before pushing
-- Fallback: `0.0.0` if not in a git repository
+- **IMPORTANT**: Changelog version must match git tag version (e.g., v0.1.3 = changelog 0.1.3)
+
+### Release Workflow
+1. Make code changes
+2. Update `debian/changelog`:
+   - Add new entry at TOP of file (newest version first)
+   - Increment version number (e.g., from 0.1.0 → 0.1.1)
+   - Describe changes in bullet points
+3. Commit with message describing changes
+4. Create git tag matching changelog version: `git tag -a vX.Y.Z -m "Version X.Y.Z"`
+5. Build and package: `make clean && make build && make test && make debian`
+6. Verify package version: `dpkg-deb -I ../open-ndi-monitor_X.Y.Z_amd64.deb | grep Version`
+
+**Key rule**: Changelog version = git tag version = package version. Always keep them in sync.
 
 ## Dependencies (must be installed before building)
 - **NDI SDK**: extracted to `resources/ndi-sdk/NDI SDK for Linux` (included in repo)
