@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: open-ndi-monitor
-Upstream-Contact: micah
-Source: https://github.com/anomalyco/open-ndi-monitor
+Upstream-Contact: dev@micahmount.com
+Source: https://github.com/micahmount/open-ndi-monitor
 
 Files: *
 Copyright: 2026 micah
