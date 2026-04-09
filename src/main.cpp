@@ -94,6 +94,7 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                   AudioContext* audio, std::vector<uint8_t>& bgr_buffer) {
     NDIlib_video_frame_v2_t video_frame;
     NDIlib_audio_frame_v2_t audio_frame;
+    NDIlib_metadata_frame_t meta_frame;
 
     int consecutive_timeouts = 0;
     const int max_timeouts = 3;  // 3 * 5s = 15s before declaring connection lost
@@ -110,7 +111,13 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
             log("Queue depth: video=%d, audio=%d", queue.video_frames, queue.audio_frames);
         }
 
-        switch (NDIlib_recv_capture_v2(recv, &video_frame, &audio_frame, nullptr, 5000)) {
+        switch (NDIlib_recv_capture_v2(recv, &video_frame, &audio_frame, &meta_frame, 5000)) {
+            case NDIlib_frame_type_metadata:
+                if (meta_frame.p_data) {
+                    log("Metadata: %s", meta_frame.p_data);
+                    NDIlib_recv_free_metadata(recv, &meta_frame);
+                }
+                break;
             case NDIlib_frame_type_video:
                 consecutive_timeouts = 0;
                 frame_count++;
@@ -199,8 +206,10 @@ NDIlib_recv_instance_t create_receiver(const NdiSourceInfo& source) {
 
     NDIlib_recv_create_v3_t recv_desc = {0};
     recv_desc.source_to_connect_to = ndi_source;
-    recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
+    recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
     recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+
+    log("Creating receiver: color_format=UYVY_BGRA, bandwidth=highest");
 
     return NDIlib_recv_create_v3(&recv_desc);
 }
