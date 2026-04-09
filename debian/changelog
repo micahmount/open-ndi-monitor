@@ -1,4 +1,10 @@
-open-ndi-monitor (0.1.0-1) stable; urgency=low
+open-ndi-monitor (0.1.4) stable; urgency=low
+
+  * Version 0.1.4 release
+
+ -- micah <micah>  Thu, 09 Apr 2026 00:00:00 +0000
+
+open-ndi-monitor (0.1.0) stable; urgency=low
 
   * Initial Debian release
   * Fullscreen NDI video monitoring via SDL2
