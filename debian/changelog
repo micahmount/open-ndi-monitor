@@ -1,3 +1,9 @@
+open-ndi-monitor (0.1.18) stable; urgency=low
+
+  * Add support for all NDI video formats: YV12, RGBX, RGBA, UYVA, P216, PA16
+
+  -- Micah Mount <dev@micahmount.com>  Mon, 13 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.17) stable; urgency=low
 
   * Use NDI FrameSync for timebase-corrected smooth playback

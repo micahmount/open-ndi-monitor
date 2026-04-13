@@ -195,10 +195,21 @@ bool receive_loop(NDIlib_recv_instance_t recv, NDIlib_framesync_instance_t frame
                               src_pitch,
                               bgr_buffer.data(), w, h);
                 converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_RGBA ||
+                     video_frame.FourCC == NDIlib_FourCC_type_RGBX) {
+                rgbx_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
+                             src_pitch,
+                             bgr_buffer.data(), w, h);
+                converted = true;
             } else if (video_frame.FourCC == NDIlib_FourCC_type_UYVY) {
                 uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
                               src_pitch,
                               bgr_buffer.data(), w, h);
+                converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_UYVA) {
+                uyva_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
+                             src_pitch,
+                             bgr_buffer.data(), w, h);
                 converted = true;
             } else if (video_frame.FourCC == NDIlib_FourCC_type_I420) {
                 const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
@@ -207,10 +218,30 @@ bool receive_loop(NDIlib_recv_instance_t recv, NDIlib_framesync_instance_t frame
                 i420_to_bgr24(y, src_pitch, u, src_pitch / 2, v, src_pitch / 2,
                               bgr_buffer.data(), w, h);
                 converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_YV12) {
+                const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                const uint8_t* v = y + h * src_pitch;
+                const uint8_t* u = v + (h / 2) * (src_pitch / 2);
+                yv12_to_bgr24(y, src_pitch, v, src_pitch / 2, u, src_pitch / 2,
+                              bgr_buffer.data(), w, h);
+                converted = true;
             } else if (video_frame.FourCC == NDIlib_FourCC_type_NV12) {
                 const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
                 const uint8_t* uv = y + h * src_pitch;
                 nv12_to_bgr24(y, src_pitch, uv, src_pitch,
+                              bgr_buffer.data(), w, h);
+                converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_P216) {
+                const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                const uint8_t* uv = y + h * src_pitch;
+                p216_to_bgr24(y, src_pitch, uv, src_pitch,
+                             bgr_buffer.data(), w, h);
+                converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_PA16) {
+                const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                const uint8_t* uv = y + h * src_pitch;
+                const uint8_t* a = uv + (h / 2) * src_pitch;
+                pa16_to_bgr24(y, src_pitch, uv, src_pitch, a, src_pitch,
                               bgr_buffer.data(), w, h);
                 converted = true;
             }
