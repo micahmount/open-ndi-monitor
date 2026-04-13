@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <SDL2/SDL.h>
 #include <Processing.NDI.Lib.h>
+#include <Processing.NDI.FrameSync.h>
 #include "config.h"
 #include "ndi_source.h"
 #include "display.h"
@@ -134,147 +135,119 @@ void pump_events() {
 }
 
 // Receive frames until connection drops or user quits.
+// Uses FrameSync for timebase-corrected smooth playback.
 // Returns true if connection was lost (needs reconnect), false if user quit.
-bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
-                  AudioContext* audio, std::vector<uint8_t>& bgr_buffer) {
+bool receive_loop(NDIlib_recv_instance_t recv, NDIlib_framesync_instance_t framesync,
+                  DisplayContext* display, AudioContext* audio, std::vector<uint8_t>& bgr_buffer) {
     NDIlib_video_frame_v2_t video_frame;
-    NDIlib_audio_frame_v2_t audio_frame;
     NDIlib_metadata_frame_t meta_frame;
 
-    int consecutive_timeouts = 0;
     int64_t frame_count = 0;
-    int64_t audio_count = 0;
+    bool first_frame = true;
 
-    log("Entering receive loop");
+    log("Entering receive loop with FrameSync");
 
-    const int max_timeouts = 3;  // 3 * 5s = 15s before declaring connection lost
+    const auto frame_interval = std::chrono::milliseconds(33);  // ~30fps
+    auto last_frame_time = std::chrono::steady_clock::now();
 
     while (!g_should_close && !display_should_close(display)) {
         pump_events();
 
         int connections = NDIlib_recv_get_no_connections(recv);
-        if (consecutive_timeouts == 0 || connections != (consecutive_timeouts > 0 ? 1 : connections)) {
-            log("Connection count: %d", connections);
+        if (!connections) {
+            log("Connection lost");
+            return true;
         }
 
-        // Log connection stats every 10 seconds
-        if (frame_count > 0 && frame_count % 200 == 0) {
-            NDIlib_recv_queue_t queue;
-            NDIlib_recv_get_queue(recv, &queue);
-            log("Queue depth: video=%d, audio=%d", queue.video_frames, queue.audio_frames);
+        // Process any metadata
+        if (NDIlib_recv_capture_v2(recv, nullptr, nullptr, &meta_frame, 0) == NDIlib_frame_type_metadata) {
+            if (meta_frame.p_data) {
+                log("Metadata: %s", meta_frame.p_data);
+                NDIlib_recv_free_metadata(recv, &meta_frame);
+            }
         }
 
-        switch (NDIlib_recv_capture_v2(recv, &video_frame, &audio_frame, &meta_frame, 5000)) {
-            case NDIlib_frame_type_metadata:
-                if (meta_frame.p_data) {
-                    log("Metadata: %s", meta_frame.p_data);
-                    
-                    char fourcc[16];
-                    if (parse_fourcc_from_metadata(meta_frame.p_data, fourcc, sizeof(fourcc))) {
-                        log("Source format - FourCC: %s", fourcc);
-                    }
-                    
-                    int width = 0, height = 0;
-                    if (parse_resolution_from_metadata(meta_frame.p_data, &width, &height)) {
-                        log("Source format - Resolution: %dx%d", width, height);
-                    }
-                    
-                    NDIlib_recv_free_metadata(recv, &meta_frame);
-                }
-                break;
-            case NDIlib_frame_type_video:
-                consecutive_timeouts = 0;
-                frame_count++;
-                {
-                    int w = video_frame.xres;
-                    int h = video_frame.yres;
-                    int src_pitch = video_frame.line_stride_in_bytes;
+        // Pull frame from FrameSync (timebase-corrected)
+        NDIlib_framesync_capture_video(framesync, &video_frame, NDIlib_frame_format_type_progressive);
 
-                    if (static_cast<unsigned int>(video_frame.FourCC) == 0) {
-                        log("First video frame: %dx%d", w, h);
-                    }
+        if (video_frame.p_data && video_frame.xres > 0 && video_frame.yres > 0) {
+            frame_count++;
 
-                    if (w <= 0 || h <= 0 || src_pitch <= 0) {
-                        log("ERROR: Invalid video frame: %dx%d pitch=%d", w, h, src_pitch);
-                        NDIlib_recv_free_video_v2(recv, &video_frame);
-                        break;
-                    }
+            int w = video_frame.xres;
+            int h = video_frame.yres;
+            int src_pitch = video_frame.line_stride_in_bytes;
 
-                    if (bgr_buffer.size() < static_cast<size_t>(w * h * 3)) {
-                        bgr_buffer.resize(w * h * 3);
-                        memset(bgr_buffer.data(), 128, w * h * 3);
-                    }
+            if (first_frame) {
+                log("First frame: %dx%d", w, h);
+                first_frame = false;
+            }
 
-                    bool converted = false;
+            if (bgr_buffer.size() < static_cast<size_t>(w * h * 3)) {
+                bgr_buffer.resize(w * h * 3);
+                memset(bgr_buffer.data(), 128, w * h * 3);
+            }
 
-                    if (video_frame.FourCC == NDIlib_FourCC_type_BGRA ||
-                        video_frame.FourCC == NDIlib_FourCC_type_BGRX) {
-                        bgra_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
-                                      src_pitch,
-                                      bgr_buffer.data(), w, h);
-                        converted = true;
-                    } else if (video_frame.FourCC == NDIlib_FourCC_type_UYVY) {
-                        uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
-                                      src_pitch,
-                                      bgr_buffer.data(), w, h);
-                        converted = true;
-                    } else if (video_frame.FourCC == NDIlib_FourCC_type_I420) {
-                        const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
-                        const uint8_t* u = y + h * src_pitch;
-                        const uint8_t* v = u + (h / 2) * (src_pitch / 2);
-                        i420_to_bgr24(y, src_pitch, u, src_pitch / 2, v, src_pitch / 2,
-                                      bgr_buffer.data(), w, h);
-                        converted = true;
-                    } else if (video_frame.FourCC == NDIlib_FourCC_type_NV12) {
-                        const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
-                        const uint8_t* uv = y + h * src_pitch;
-                        nv12_to_bgr24(y, src_pitch, uv, src_pitch,
-                                      bgr_buffer.data(), w, h);
-                        converted = true;
-                    } else {
-                        log("ERROR: Unsupported video format: FourCC=0x%08X", 
-                            static_cast<unsigned int>(video_frame.FourCC));
-                    }
+            bool converted = false;
 
-                    if (converted) {
-                        update_display(display, bgr_buffer.data(), w, h);
-                    }
+            if (video_frame.FourCC == NDIlib_FourCC_type_BGRA ||
+                video_frame.FourCC == NDIlib_FourCC_type_BGRX) {
+                bgra_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
+                              src_pitch,
+                              bgr_buffer.data(), w, h);
+                converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_UYVY) {
+                uyvy_to_bgr24(static_cast<const uint8_t*>(video_frame.p_data),
+                              src_pitch,
+                              bgr_buffer.data(), w, h);
+                converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_I420) {
+                const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                const uint8_t* u = y + h * src_pitch;
+                const uint8_t* v = u + (h / 2) * (src_pitch / 2);
+                i420_to_bgr24(y, src_pitch, u, src_pitch / 2, v, src_pitch / 2,
+                              bgr_buffer.data(), w, h);
+                converted = true;
+            } else if (video_frame.FourCC == NDIlib_FourCC_type_NV12) {
+                const uint8_t* y = static_cast<const uint8_t*>(video_frame.p_data);
+                const uint8_t* uv = y + h * src_pitch;
+                nv12_to_bgr24(y, src_pitch, uv, src_pitch,
+                              bgr_buffer.data(), w, h);
+                converted = true;
+            }
 
-                    display_present(display);
+            if (converted) {
+                update_display(display, bgr_buffer.data(), w, h);
+            }
 
-                    NDIlib_recv_free_video_v2(recv, &video_frame);
-                }
-                break;
+            display_present(display);
 
-            case NDIlib_frame_type_audio:
-                consecutive_timeouts = 0;
-                audio_count++;
-                if (audio) {
-                    audio_push_frame(audio, &audio_frame);
-                }
-                NDIlib_recv_free_audio_v2(recv, &audio_frame);
-                break;
-
-            case NDIlib_frame_type_error:
-                log("NDI receive error");
-                return true;
-
-            default:
-                consecutive_timeouts++;
-                if (consecutive_timeouts == 1) {
-                    log("Timeout waiting for frames (video=%lld, audio=%lld)...", 
-                        (long long)frame_count, (long long)audio_count);
-                }
-                if (consecutive_timeouts >= max_timeouts) {
-                    log("Connection lost: no frames for %ds (video=%lld, audio=%lld)", 
-                        consecutive_timeouts * 5, (long long)frame_count, (long long)audio_count);
-                    return true;
-                }
-                break;
+            NDIlib_framesync_free_video(framesync, &video_frame);
         }
+
+        // Frame pacing
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = now - last_frame_time;
+        if (elapsed < frame_interval) {
+            std::this_thread::sleep_for(frame_interval - elapsed);
+        }
+        last_frame_time = std::chrono::steady_clock::now();
     }
 
     return false;  // User quit, not connection loss
+}
+
+// Create a frame synchronizer for smooth playback
+NDIlib_framesync_instance_t create_framesync(NDIlib_recv_instance_t recv) {
+    if (!recv) return nullptr;
+    
+    NDIlib_framesync_instance_t framesync = NDIlib_framesync_create(recv);
+    if (!framesync) {
+        log("WARNING: Failed to create FrameSync");
+        return nullptr;
+    }
+    
+    log("FrameSync created");
+    return framesync;
 }
 
 // Create a receiver for the given source
@@ -429,6 +402,9 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to create NDI receiver\n";
             display_draw_text(display, "no_signal", 20, 20);
         } else {
+            // Create FrameSync for timebase-corrected smooth playback
+            NDIlib_framesync_instance_t framesync = create_framesync(recv);
+
             // Start audio playback
             if (audio) {
                 audio_start(audio);
@@ -448,13 +424,17 @@ int main(int argc, char* argv[]) {
             log("Connection established (waited %d00ms)", wait_count);
 
             // Run receive loop - returns true if connection lost
-            bool connection_lost = receive_loop(recv, display, audio, bgr_buffer);
+            bool connection_lost = receive_loop(recv, framesync, display, audio, bgr_buffer);
 
             // Stop audio
             if (audio) {
                 audio_stop(audio);
             }
 
+            // Destroy FrameSync first, then receiver
+            if (framesync) {
+                NDIlib_framesync_destroy(framesync);
+            }
             NDIlib_recv_destroy(recv);
 
             if (!connection_lost) {

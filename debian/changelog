@@ -1,3 +1,10 @@
+open-ndi-monitor (0.1.17) stable; urgency=low
+
+  * Use NDI FrameSync for timebase-corrected smooth playback
+  * Pull frames at display rate instead of receiving as they arrive
+
+  -- Micah Mount <dev@micahmount.com>  Mon, 13 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.16) stable; urgency=low
 
   * Add frame pacing to render at fixed FPS and prevent jerky playback
