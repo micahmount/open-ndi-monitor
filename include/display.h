@@ -7,8 +7,14 @@ struct DisplayContext;
 // Create fullscreen SDL2 window on the given display index.
 DisplayContext* create_display(int display_index, const std::string& title);
 
+// Set target framerate (default 30).
+void display_set_framerate(DisplayContext* ctx, int fps);
+
 // Update the display with new RGB pixel data.
 void update_display(DisplayContext* ctx, const void* pixels, int width, int height);
+
+// Present the frame (handles pacing and rendering). Call each frame in render loop.
+void display_present(DisplayContext* ctx);
 
 // Destroy the display context.
 void destroy_display(DisplayContext* ctx);

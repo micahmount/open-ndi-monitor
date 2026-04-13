@@ -190,12 +190,10 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     int h = video_frame.yres;
                     int src_pitch = video_frame.line_stride_in_bytes;
 
-                    log("Video frame #%lld: %dx%d, pitch=%d, FourCC=0x%08X", 
-                        (long long)frame_count,
-                        w, h, src_pitch, 
-                        static_cast<unsigned int>(video_frame.FourCC));
+                    if (static_cast<unsigned int>(video_frame.FourCC) == 0) {
+                        log("First video frame: %dx%d", w, h);
+                    }
 
-                    // Validate frame parameters
                     if (w <= 0 || h <= 0 || src_pitch <= 0) {
                         log("ERROR: Invalid video frame: %dx%d pitch=%d", w, h, src_pitch);
                         NDIlib_recv_free_video_v2(recv, &video_frame);
@@ -208,14 +206,6 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     }
 
                     bool converted = false;
-
-                    log("Video format: FourCC=0x%08X (%s)", 
-                        static_cast<unsigned int>(video_frame.FourCC),
-                        video_frame.FourCC == NDIlib_FourCC_type_BGRA ? "BGRA" :
-                        video_frame.FourCC == NDIlib_FourCC_type_BGRX ? "BGRX" :
-                        video_frame.FourCC == NDIlib_FourCC_type_UYVY ? "UYVY" :
-                        video_frame.FourCC == NDIlib_FourCC_type_I420 ? "I420" :
-                        video_frame.FourCC == NDIlib_FourCC_type_NV12 ? "NV12" : "unknown");
 
                     if (video_frame.FourCC == NDIlib_FourCC_type_BGRA ||
                         video_frame.FourCC == NDIlib_FourCC_type_BGRX) {
@@ -247,12 +237,10 @@ bool receive_loop(NDIlib_recv_instance_t recv, DisplayContext* display,
                     }
 
                     if (converted) {
-                        // Debug: print first pixel after conversion
-                        printf("BGR buffer first pixel: %d,%d,%d\n", 
-                               bgr_buffer[0], bgr_buffer[1], bgr_buffer[2]);
                         update_display(display, bgr_buffer.data(), w, h);
-                        display_draw_text(display, "connected", 20, 20);
                     }
+
+                    display_present(display);
 
                     NDIlib_recv_free_video_v2(recv, &video_frame);
                 }

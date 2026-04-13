@@ -1,5 +1,7 @@
 #include <SDL.h>
 #include <iostream>
+#include <vector>
+#include <chrono>
 #include "display.h"
 
 struct DisplayContext {
@@ -9,6 +11,13 @@ struct DisplayContext {
     int width = 0;
     int height = 0;
     bool should_close = false;
+    
+    uint32_t target_frame_time = 33;  // ~30fps default (1000ms / 30)
+    uint32_t last_present = 0;
+    std::vector<uint8_t> pending_pixels;
+    int pending_width = 0;
+    int pending_height = 0;
+    bool pending_update = false;
 };
 
 DisplayContext* create_display(int display_index, const std::string& title) {
@@ -73,15 +82,17 @@ DisplayContext* create_display(int display_index, const std::string& title) {
     return ctx;
 }
 
+void display_set_framerate(DisplayContext* ctx, int fps) {
+    if (!ctx || fps <= 0) return;
+    ctx->target_frame_time = 1000 / fps;
+}
+
 void update_display(DisplayContext* ctx, const void* pixels, int width, int height) {
     if (!ctx || !ctx->renderer) {
-        std::cerr << "update_display: null context or renderer\n";
         return;
     }
 
-    // Validate dimensions to prevent crashes
     if (width <= 0 || height <= 0) {
-        std::cerr << "update_display: invalid dimensions " << width << "x" << height << "\n";
         return;
     }
 
@@ -95,7 +106,6 @@ void update_display(DisplayContext* ctx, const void* pixels, int width, int heig
             width, height
         );
         if (!ctx->texture) {
-            std::cerr << "SDL_CreateTexture failed: " << SDL_GetError() << "\n";
             return;
         }
         ctx->width = width;
@@ -103,30 +113,50 @@ void update_display(DisplayContext* ctx, const void* pixels, int width, int heig
         std::printf("Created texture: %dx%d\n", width, height);
     }
 
+    // Store pending frame for pacing
+    size_t pixel_size = static_cast<size_t>(width) * height * 3;
+    if (ctx->pending_pixels.size() < pixel_size) {
+        ctx->pending_pixels.resize(pixel_size);
+    }
+    memcpy(ctx->pending_pixels.data(), pixels, pixel_size);
+    ctx->pending_width = width;
+    ctx->pending_height = height;
+    ctx->pending_update = true;
+}
+
+void display_present(DisplayContext* ctx) {
+    if (!ctx || !ctx->renderer || !ctx->pending_update) {
+        return;
+    }
+
+    // Frame pacing: skip present if not enough time has passed
+    uint32_t now = SDL_GetTicks();
+    if (now - ctx->last_present < ctx->target_frame_time) {
+        return;
+    }
+
+    ctx->last_present = now;
+
+    int width = ctx->pending_width;
+    int height = ctx->pending_height;
+
     if (ctx->texture) {
         void* tex_pixels;
         int tex_pitch;
         if (SDL_LockTexture(ctx->texture, nullptr, &tex_pixels, &tex_pitch) == 0) {
-            // Copy row by row (source may have different pitch)
-            const uint8_t* src = static_cast<const uint8_t*>(pixels);
+            const uint8_t* src = ctx->pending_pixels.data();
             uint8_t* dst = static_cast<uint8_t*>(tex_pixels);
             int src_pitch = width * 3;
-            std::printf("update_display: src_pitch=%d, tex_pitch=%d\n", src_pitch, tex_pitch);
-            for (int y = 0; y < height; y++) {
-                memcpy(dst + y * tex_pitch, src + y * src_pitch, src_pitch);
-            }
-            // Debug: check first few pixels after copy
-            std::printf("First pixel BGR: %d,%d,%d\n", dst[0], dst[1], dst[2]);
+            memcpy(dst, src, static_cast<size_t>(src_pitch) * height);
             SDL_UnlockTexture(ctx->texture);
-        } else {
-            std::cerr << "SDL_LockTexture failed: " << SDL_GetError() << "\n";
         }
 
         SDL_RenderClear(ctx->renderer);
         SDL_RenderCopy(ctx->renderer, ctx->texture, nullptr, nullptr);
         SDL_RenderPresent(ctx->renderer);
-        std::printf("Rendered frame\n");
     }
+
+    ctx->pending_update = false;
 }
 
 void destroy_display(DisplayContext* ctx) {

@@ -1,6 +1,27 @@
+open-ndi-monitor (0.1.16) stable; urgency=low
+
+  * Add frame pacing to render at fixed FPS and prevent jerky playback
+  * Remove debug printf from video hot path
+  * Reduce per-frame logging overhead
+
+  -- Micah Mount <dev@micahmount.com>  Mon, 13 Apr 2026 00:00:00 +0000
+
 open-ndi-monitor (0.1.15) stable; urgency=low
 
   * Set allow_video_fields=false to request full frames (not fields)
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
+open-ndi-monitor (0.1.14) stable; urgency=low
+
+  * Fallback to software renderer if accelerated fails
+
+  -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
+
+open-ndi-monitor (0.1.13) stable; urgency=low
+
+  * Force BGRX color format for better compatibility
+  * Initialize bgr_buffer with gray to debug display issues
 
   -- Micah Mount <dev@micahmount.com>  Thu, 09 Apr 2026 00:00:00 +0000
 
