@@ -1,7 +1,6 @@
 open-ndi-monitor (0.1.19) stable; urgency=low
 
-  * Add 2-second grace period for brief network interruptions before exiting
-  * Exit after grace period when stream stops, allowing systemd auto-restart
+  * Exit immediately when NDI stream stops, let systemd handle retry logic
   * Add --auto flag for automatic source selection (no CLI prompt)
 
   -- Micah Mount <dev@micahmount.com>  Mon, 13 Apr 2026 00:00:00 +0000

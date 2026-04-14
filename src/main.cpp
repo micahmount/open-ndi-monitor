@@ -498,44 +498,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            // Connection lost - briefly wait to handle brief network interruptions
-            printf("Connection lost, waiting briefly...\n");
-            display_draw_text(display, "reconnecting", 20, 20);
-            
-            auto wait_start = std::chrono::steady_clock::now();
-            const int brief_timeout_ms = 2000;  // 2 seconds for brief interruptions
-            bool reconnected = false;
-
-            while (!g_should_close && !display_should_close(display)) {
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - wait_start).count();
-                
-                if (elapsed >= brief_timeout_ms) {
-                    break;
-                }
-
-                pump_events();
-
-                // Check if source came back
-                auto test_sources = discover_sources(500);
-                for (const auto& src : test_sources) {
-                    if (src.name == selected.name) {
-                        selected.url_address = src.url_address;
-                        printf("Reconnected after brief interruption\n");
-                        reconnected = true;
-                        break;
-                    }
-                }
-
-                if (reconnected) break;
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            }
-
-            if (reconnected) {
-                continue;  // Try to receive again
-            }
-
-            // Still not connected - exit for systemd restart
+            // Connection lost - exit immediately to let systemd restart the service
             printf("Connection lost, exiting for systemd restart\n");
             g_should_close = true;
             break;
