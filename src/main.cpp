@@ -21,6 +21,7 @@
 #include "user_detect.h"
 
 static std::atomic<bool> g_should_close{false};
+static std::atomic<bool> g_auto_mode{false};
 
 static std::ofstream g_logfile;
 
@@ -347,8 +348,11 @@ int main(int argc, char* argv[]) {
             audio_list_devices();
             return 0;
         } else if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
-            printf("Usage: open-ndi-monitor [--config <path>] [--audio-device <name>] [--list-audio-devices] [--enable-audio]\n");
+            printf("Usage: open-ndi-monitor [--config <path>] [--audio-device <name>] [--list-audio-devices] [--enable-audio] [--auto]\n");
+            printf("  --auto        Automatically select first available source (no CLI prompt)\n");
             return 0;
+        } else if (std::strcmp(argv[i], "--auto") == 0) {
+            g_auto_mode = true;
         }
     }
 
@@ -370,7 +374,30 @@ int main(int argc, char* argv[]) {
     }
 
     // Select source
-    int source_idx = select_source_cli(sources, cfg.source_name);
+    int source_idx;
+    if (g_auto_mode) {
+        // Auto mode: use preferred from config if available, otherwise first source
+        source_idx = -1;
+        if (!cfg.source_name.empty()) {
+            for (size_t i = 0; i < sources.size(); i++) {
+                if (sources[i].name == cfg.source_name) {
+                    printf("Auto mode: using configured source: %s\n", sources[i].name.c_str());
+                    source_idx = static_cast<int>(i);
+                    break;
+                }
+            }
+            if (source_idx < 0) {
+                printf("Auto mode: configured source '%s' not found, using first available\n", cfg.source_name.c_str());
+            }
+        }
+        if (source_idx < 0 && !sources.empty()) {
+            source_idx = 0;
+            printf("Auto mode: selecting first source: %s\n", sources[0].name.c_str());
+        }
+    } else {
+        source_idx = select_source_cli(sources, cfg.source_name);
+    }
+
     if (source_idx < 0) {
         std::cerr << "No source selected\n";
         return 1;
@@ -424,8 +451,6 @@ int main(int argc, char* argv[]) {
     // BGR24 output buffer (allocated once, reused)
     std::vector<uint8_t> bgr_buffer;
 
-    const int reconnect_timeout_ms = 10000;  // 10 seconds to try reconnecting
-
     while (!g_should_close && !display_should_close(display)) {
         // Create receiver
         NDIlib_recv_instance_t recv = create_receiver(selected);
@@ -473,46 +498,45 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            // Connection lost - try to reconnect within timeout
-            printf("Connection lost, attempting to reconnect...\n");
+            // Connection lost - briefly wait to handle brief network interruptions
+            printf("Connection lost, waiting briefly...\n");
             display_draw_text(display, "reconnecting", 20, 20);
-
-            auto reconnect_start = std::chrono::steady_clock::now();
+            
+            auto wait_start = std::chrono::steady_clock::now();
+            const int brief_timeout_ms = 2000;  // 2 seconds for brief interruptions
             bool reconnected = false;
 
             while (!g_should_close && !display_should_close(display)) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - reconnect_start).count();
-
-                if (elapsed >= reconnect_timeout_ms) {
-                    break;  // Timeout exceeded
+                    std::chrono::steady_clock::now() - wait_start).count();
+                
+                if (elapsed >= brief_timeout_ms) {
+                    break;
                 }
 
                 pump_events();
 
-                // Try to reconnect
-                auto test_sources = discover_sources(2000);
+                // Check if source came back
+                auto test_sources = discover_sources(500);
                 for (const auto& src : test_sources) {
                     if (src.name == selected.name) {
                         selected.url_address = src.url_address;
-                        printf("Reconnected to %s\n", selected.name.c_str());
+                        printf("Reconnected after brief interruption\n");
                         reconnected = true;
                         break;
                     }
                 }
 
                 if (reconnected) break;
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
             }
 
             if (reconnected) {
                 continue;  // Try to receive again
             }
 
-            // Failed to reconnect within timeout - exit to let systemd restart
-            std::cout << "Failed to reconnect within " << (reconnect_timeout_ms / 1000)
-                      << "s, exiting for restart\n";
+            // Still not connected - exit for systemd restart
+            printf("Connection lost, exiting for systemd restart\n");
             g_should_close = true;
             break;
         }
@@ -520,9 +544,6 @@ int main(int argc, char* argv[]) {
         if (g_should_close || display_should_close(display)) {
             break;
         }
-
-        // Wait before checking again
-        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
     printf("Shutting down...\n");
