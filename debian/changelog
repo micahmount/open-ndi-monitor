@@ -1,7 +1,19 @@
-open-ndi-monitor (0.1.19) stable; urgency=low
+open-ndi-monitor (0.1.21) stable; urgency=low
+
+  * Run systemd service as user tv to fix X display access
+
+  -- Micah Mount <dev@micahmount.com>  Mon, 20 Apr 2026 00:00:00 +0000
+
+open-ndi-monitor (0.1.20) stable; urgency=low
 
   * Exit immediately when NDI stream stops, let systemd handle retry logic
   * Add --auto flag for automatic source selection (no CLI prompt)
+
+  -- Micah Mount <dev@micahmount.com>  Mon, 13 Apr 2026 00:00:00 +0000
+
+open-ndi-monitor (0.1.19) stable; urgency=low
+
+  * Add 2-second grace period for brief network interruptions before exiting
 
   -- Micah Mount <dev@micahmount.com>  Mon, 13 Apr 2026 00:00:00 +0000
 

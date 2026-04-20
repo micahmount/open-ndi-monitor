@@ -5,7 +5,10 @@ After=graphical.target
 
 [Service]
 Type=simple
+User=tv
+Group=tv
 Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XAUTHORITY=/home/tv/.Xauthority
 Environment=DISPLAY=:0
 Environment=SDL_AUDIODRIVER=alsa
 ExecStartPre=/usr/bin/sleep 2
